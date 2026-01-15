@@ -4,6 +4,9 @@
 /build
 /tmp
 
+# Coverage
+/coverage
+
 # Logs
 logs
 *.log
@@ -18,7 +21,21 @@ lerna-debug.log*
 .env.development
 .env.test
 .env.production
+.env.local
+.env.*.local
+
+# TypeScript
+*.tsbuildinfo
+
+# Editor/OS files
+.DS_Store
+.idea
+.vscode
+*.swp
 
 # temp directory
 .temp
 .tmp
+
+prisma/migrations/*
+prisma/migrations/**
