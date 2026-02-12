@@ -1,14 +1,303 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+enum RoleName {
+  SUPERADMIN
+  ENCARGADO
+  SECRETARIA
+  INSPECTOR
+}
+
+enum CompanyCategory {
+  C3
+  C4
+}
+
+enum ProcedureTypeCode {
+  RAI
+  MAI_PMA
+  IAA
+  CIERRE
+}
+
+enum ProcedureKind {
+  NUEVO
+  RENOVACION
+}
+
+enum ProcedureStatus {
+  RECIBIDO
+  EN_REVISION
+  OBSERVADO_PENDIENTE_RECOJO
+  SUBSANACION_PENDIENTE_REINGRESO
+  CERRADO
+  ABANDONADO
+}
+
+enum DocumentGroup {
+  INGRESO
+  ANEXO
+  OBSERVACIONES
+  REINGRESO
+  ACTA
+  INFORME
+  RESULTADO_FINAL
+  OTRO
+}
+
+model Role {
+  id        BigInt   @id @default(autoincrement())
+  name      RoleName @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  users UserRole[]
+
+  @@map("role")
+}
+
+model User {
+  id           BigInt    @id @default(autoincrement())
+  email        String    @unique
+  passwordHash String
+  fullName     String
+  isActive     Boolean   @default(true)
+  deletedAt    DateTime? @db.Timestamptz(6)
+
+  lastLoginAt DateTime? @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+
+  roles              UserRole[]
+  createdProcedures  Procedure[]      @relation("ProcedureCreatedBy")
+  assignedProcedures Procedure[]      @relation("ProcedureAssignedInspector")
+  audits             ProcedureAudit[] @relation("ProcedureAuditChangedBy")
+  refreshTokens      RefreshToken[]   @relation("UserRefreshTokens")
+  auditLogs          AuditLog[]       @relation("UserAuditLogs")
+  issuedObservations Observation[]
+  uploadedDocuments  Document[]
+
+  @@map("user")
+}
+
+model UserRole {
+  userId     BigInt
+  roleId     BigInt
+  assignedAt DateTime  @default(now()) @db.Timestamptz(6)
+  revokedAt  DateTime? @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+  @@map("user_role")
+}
+
+model Company {
+  id           BigInt          @id @default(autoincrement())
+  legalName    String
+  nit          String?
+  raiNumber    String?         @unique
+  category     CompanyCategory
+  address      String?
+  phone        String?
+  legalRepName String?
+  legalRepCi   String?
+
+  isActive  Boolean   @default(true)
+  deletedAt DateTime? @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+
+  caseFile CaseFile?
+
+  @@index([legalName])
+  @@map("company")
+}
+
+model CaseFile {
+  id        BigInt    @id @default(autoincrement())
+  companyId BigInt    @unique
+  code      String?   @unique
+  openedAt  DateTime  @default(now()) @db.Timestamptz(6)
+  closedAt  DateTime? @db.Timestamptz(6)
+
+  isActive  Boolean   @default(true)
+  deletedAt DateTime? @db.Timestamptz(6)
+
+  company    Company     @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  procedures Procedure[]
+
+  @@map("case_file")
+}
+
+model ProcedureType {
+  id                 Int               @id @default(autoincrement())
+  code               ProcedureTypeCode @unique
+  name               String
+  allowsObservations Boolean           @default(true)
+  allowsReentry      Boolean           @default(true)
+
+  procedures Procedure[]
+
+  @@map("procedure_type")
+}
+
+model Procedure {
+  id              BigInt          @id @default(autoincrement())
+  caseFileId      BigInt
+  procedureTypeId Int
+  procedureKind   ProcedureKind
+  currentStatus   ProcedureStatus @default(RECIBIDO)
+  cycleCount      Int             @default(0)
+
+  receptionDate   DateTime  @db.Date
+  reviewStartDate DateTime? @db.Date
+  obsPickedDate   DateTime? @db.Date
+
+  closedAt DateTime? @db.Timestamptz(6)
+
+  createdByUserId         BigInt
+  assignedInspectorUserId BigInt?
+
+  abandonReason String?
+
+  isActive  Boolean   @default(true)
+  deletedAt DateTime? @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+
+  caseFile      CaseFile      @relation(fields: [caseFileId], references: [id], onDelete: Restrict)
+  procedureType ProcedureType @relation(fields: [procedureTypeId], references: [id], onDelete: Restrict)
+
+  createdBy         User  @relation("ProcedureCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  assignedInspector User? @relation("ProcedureAssignedInspector", fields: [assignedInspectorUserId], references: [id], onDelete: Restrict)
+
+  audits       ProcedureAudit[]
+  cycles       ProcedureCycle[]
+  observations Observation[]
+  documents    Document[]
+
+  @@index([caseFileId, procedureTypeId, currentStatus])
+  @@map("procedure")
+}
+
+model ProcedureAudit {
+  id              BigInt           @id @default(autoincrement())
+  procedureId     BigInt
+  fromStatus      ProcedureStatus?
+  toStatus        ProcedureStatus
+  changedByUserId BigInt
+  changedAt       DateTime         @default(now()) @db.Timestamptz(6)
+  note            String?
+
+  procedure Procedure @relation(fields: [procedureId], references: [id], onDelete: Restrict)
+  changedBy User      @relation("ProcedureAuditChangedBy", fields: [changedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([procedureId, changedAt])
+  @@map("procedure_audit")
+}
+
+model ProcedureCycle {
+  id          BigInt    @id @default(autoincrement())
+  procedureId BigInt
+  cycleNumber Int
+  openedAt    DateTime  @default(now()) @db.Timestamptz(6)
+  closedAt    DateTime? @db.Timestamptz(6)
+  note        String?
+
+  isActive  Boolean   @default(true)
+  deletedAt DateTime? @db.Timestamptz(6)
+
+  procedure    Procedure     @relation(fields: [procedureId], references: [id], onDelete: Restrict)
+  observations Observation[]
+  documents    Document[]
+
+  @@unique([procedureId, cycleNumber])
+  @@index([procedureId])
+  @@map("procedure_cycle")
+}
+
+model Observation {
+  id             BigInt   @id @default(autoincrement())
+  procedureId    BigInt
+  cycleId        BigInt?
+  summary        String
+  details        String?
+  isResolved     Boolean  @default(false)
+  issuedAt       DateTime @default(now()) @db.Timestamptz(6)
+  issuedByUserId BigInt
+
+  isActive  Boolean   @default(true)
+  deletedAt DateTime? @db.Timestamptz(6)
+
+  procedure Procedure       @relation(fields: [procedureId], references: [id], onDelete: Restrict)
+  cycle     ProcedureCycle? @relation(fields: [cycleId], references: [id], onDelete: Restrict)
+  issuedBy  User            @relation(fields: [issuedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([procedureId, issuedAt])
+  @@map("observation")
+}
+
+model Document {
+  id               BigInt        @id @default(autoincrement())
+  procedureId      BigInt
+  cycleId          BigInt?
+  docGroup         DocumentGroup
+  fileName         String
+  storageKey       String
+  mimeType         String
+  version          Int           @default(1)
+  uploadedByUserId BigInt
+  uploadedAt       DateTime      @default(now()) @db.Timestamptz(6)
+
+  isActive  Boolean   @default(true)
+  deletedAt DateTime? @db.Timestamptz(6)
+
+  procedure  Procedure       @relation(fields: [procedureId], references: [id], onDelete: Restrict)
+  cycle      ProcedureCycle? @relation(fields: [cycleId], references: [id], onDelete: Restrict)
+  uploadedBy User            @relation(fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([procedureId, docGroup, version])
+  @@index([procedureId, docGroup])
+  @@map("document")
+}
+
+// ==============================
+// authetication and auditLogs
+// ==============================
+
+model RefreshToken {
+  id         BigInt   @id @default(autoincrement())
+  token      String   @unique
+  userId     BigInt
+  expiresAt  DateTime @db.Timestamptz(6)
+  revoked    Boolean  @default(false)
+  revokedAt  DateTime? @db.Timestamptz(6)
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+
+  user User @relation("UserRefreshTokens", fields: [userId], references: [id], onDelete: NoAction)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_token")
+}
+
+model AuditLog {
+  id         BigInt   @id @default(autoincrement())
+  action     String
+  userId     BigInt?
+  details    Json?
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+
+  user User? @relation("UserAuditLogs", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@map("audit_log")
 }

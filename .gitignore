@@ -1,14 +1,19 @@
-# Nestjs specific
-/dist
-/node_modules
-/build
-/tmp
+# Dependencies
+node_modules/
 
-# Coverage
-/coverage
+# Build outputs
+dist/
+build/
+coverage/
+tmp/
+.temp/
+.tmp/
+
+# Prisma generated client (custom output in schema.prisma)
+generated/prisma/
 
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 pnpm-debug.log*
@@ -16,26 +21,22 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
-# dotenv environment variable files
+# Environment files (keep .env.example committed)
 .env
+.env.local
 .env.development
 .env.test
 .env.production
-.env.local
 .env.*.local
 
 # TypeScript
 *.tsbuildinfo
 
-# Editor/OS files
+# Package managers
+.pnpm-store/
+
+# Editor / OS
 .DS_Store
-.idea
-.vscode
+.idea/
+.vscode/
 *.swp
-
-# temp directory
-.temp
-.tmp
-
-prisma/migrations/*
-prisma/migrations/**
