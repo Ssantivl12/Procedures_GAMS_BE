@@ -1,5 +1,7 @@
 # Dependencies
 node_modules/
+package-lock.json
+
 
 # Build outputs
 dist/
@@ -40,3 +42,6 @@ lerna-debug.log*
 .idea/
 .vscode/
 *.swp
+
+prisma/migrations
+prisma/migrations/**
