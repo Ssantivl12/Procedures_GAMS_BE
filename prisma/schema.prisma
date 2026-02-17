@@ -50,6 +50,14 @@ enum DocumentGroup {
   OTRO
 }
 
+enum ObservationCategory {
+  DOCUMENTAL
+  TECNICA
+  ADMINISTRATIVA
+  LEGAL
+  OTRA
+}
+
 model Role {
   id        BigInt   @id @default(autoincrement())
   name      RoleName @unique
@@ -109,6 +117,12 @@ model Company {
   legalRepName String?
   legalRepCi   String?
 
+  caebCodes        String[]
+  economicActivity String?
+  municipality     String?
+  email            String?
+  observations     String?
+
   isActive  Boolean   @default(true)
   deletedAt DateTime? @db.Timestamptz(6)
   createdAt DateTime  @default(now()) @db.Timestamptz(6)
@@ -120,11 +134,12 @@ model Company {
 }
 
 model CaseFile {
-  id        BigInt    @id @default(autoincrement())
-  companyId BigInt    @unique
-  code      String?   @unique
-  openedAt  DateTime  @default(now()) @db.Timestamptz(6)
-  closedAt  DateTime? @db.Timestamptz(6)
+  id         BigInt    @id @default(autoincrement())
+  companyId  BigInt    @unique
+  code       String?   @unique
+  fileNumber String?   @unique
+  openedAt   DateTime  @default(now()) @db.Timestamptz(6)
+  closedAt   DateTime? @db.Timestamptz(6)
 
   isActive  Boolean   @default(true)
   deletedAt DateTime? @db.Timestamptz(6)
@@ -159,6 +174,18 @@ model Procedure {
   reviewStartDate DateTime? @db.Date
   obsPickedDate   DateTime? @db.Date
 
+  deadlineDate        DateTime? @db.Date
+  daysElapsed         Int?      @default(0)
+  isOverdue           Boolean   @default(false)
+  routeSheetNumber    String?
+  internalFileNumber  String?
+  approvalDate        DateTime? @db.Date
+  approvalCertificate String?
+  expirationDate      DateTime? @db.Date
+  maxReentriesAllowed Int       @default(1)
+  reentryCount        Int       @default(0)
+  generalNotes        String?
+
   closedAt DateTime? @db.Timestamptz(6)
 
   createdByUserId         BigInt
@@ -182,6 +209,9 @@ model Procedure {
   documents    Document[]
 
   @@index([caseFileId, procedureTypeId, currentStatus])
+  @@index([currentStatus, assignedInspectorUserId])
+  @@index([receptionDate])
+  @@index([deadlineDate])
   @@map("procedure")
 }
 
@@ -209,6 +239,9 @@ model ProcedureCycle {
   closedAt    DateTime? @db.Timestamptz(6)
   note        String?
 
+  reentryDate    DateTime? @db.Date
+  reviewDeadline DateTime? @db.Date
+
   isActive  Boolean   @default(true)
   deletedAt DateTime? @db.Timestamptz(6)
 
@@ -231,6 +264,12 @@ model Observation {
   issuedAt       DateTime @default(now()) @db.Timestamptz(6)
   issuedByUserId BigInt
 
+  category         String?
+  priority         String?
+  resolvedAt       DateTime? @db.Timestamptz(6)
+  resolvedByUserId BigInt?
+  resolutionNote   String?
+
   isActive  Boolean   @default(true)
   deletedAt DateTime? @db.Timestamptz(6)
 
@@ -243,16 +282,23 @@ model Observation {
 }
 
 model Document {
-  id               BigInt        @id @default(autoincrement())
-  procedureId      BigInt
-  cycleId          BigInt?
-  docGroup         DocumentGroup
-  fileName         String
-  storageKey       String
-  mimeType         String
-  version          Int           @default(1)
+  id          BigInt        @id @default(autoincrement())
+  procedureId BigInt
+  cycleId     BigInt?
+  docGroup    DocumentGroup
+  fileName    String
+  storageKey  String
+  mimeType    String
+
+  fileSize         BigInt?
+  description      String?
+  originalFileName String?
+  checksum         String?
+  isLatest         Boolean  @default(true)
+  replacedById     BigInt?
+  version          Int      @default(1)
   uploadedByUserId BigInt
-  uploadedAt       DateTime      @default(now()) @db.Timestamptz(6)
+  uploadedAt       DateTime @default(now()) @db.Timestamptz(6)
 
   isActive  Boolean   @default(true)
   deletedAt DateTime? @db.Timestamptz(6)
@@ -263,6 +309,7 @@ model Document {
 
   @@unique([procedureId, docGroup, version])
   @@index([procedureId, docGroup])
+  @@index([uploadedAt])
   @@map("document")
 }
 
@@ -271,15 +318,15 @@ model Document {
 // ==============================
 
 model RefreshToken {
-  id         BigInt   @id @default(autoincrement())
-  token      String   @unique
-  userId     BigInt
-  expiresAt  DateTime @db.Timestamptz(6)
-  revoked    Boolean  @default(false)
-  revokedAt  DateTime? @db.Timestamptz(6)
-  ip         String?
-  userAgent  String?
-  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  id        BigInt    @id @default(autoincrement())
+  token     String    @unique
+  userId    BigInt
+  expiresAt DateTime  @db.Timestamptz(6)
+  revoked   Boolean   @default(false)
+  revokedAt DateTime? @db.Timestamptz(6)
+  ip        String?
+  userAgent String?
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
 
   user User @relation("UserRefreshTokens", fields: [userId], references: [id], onDelete: NoAction)
 
@@ -289,15 +336,43 @@ model RefreshToken {
 }
 
 model AuditLog {
-  id         BigInt   @id @default(autoincrement())
-  action     String
-  userId     BigInt?
-  details    Json?
-  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  id        BigInt   @id @default(autoincrement())
+  action    String
+  userId    BigInt?
+  details   Json?
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
 
   user User? @relation("UserAuditLogs", fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([action])
   @@map("audit_log")
+}
+
+model DeadlineConfig {
+  id            Int               @id @default(autoincrement())
+  procedureType ProcedureTypeCode
+  cycleNumber   Int
+  deadlineDays  Int
+  description   String?
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([procedureType, cycleNumber])
+  @@map("deadline_config")
+}
+
+model NonWorkingDay {
+  id          Int      @id @default(autoincrement())
+  date        DateTime @db.Date
+  description String?
+  type        String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  createdBy   BigInt?
+
+  @@unique([date])
+  @@index([date])
+  @@map("non_working_day")
 }
