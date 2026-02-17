@@ -13,7 +13,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async create(createUserDto: CreateUserDto) {
     const existingUser = await this.prisma.user.findUnique({
@@ -72,12 +72,12 @@ export class UsersService {
     return users.map((user) => this.mapToResponse(user));
   }
 
-  async findOne(id: bigint) {
+  async findOne(id: string) {
     const user = await this.findById(id);
     return this.mapToResponse(user);
   }
 
-  async update(id: bigint, updateUserDto: UpdateUserDto) {
+  async update(id: string, updateUserDto: UpdateUserDto) {
     const user = await this.findById(id);
 
     if (updateUserDto.email && updateUserDto.email !== user.email) {
@@ -157,7 +157,7 @@ export class UsersService {
     return this.mapToResponse(await this.findById(id));
   }
 
-  async remove(id: bigint) {
+  async remove(id: string) {
     await this.findById(id);
     await this.prisma.user.update({
       where: { id },
@@ -169,7 +169,7 @@ export class UsersService {
     return { message: USER_MESSAGES.SUCCESS.USER_DELETED };
   }
 
-  // Método usado internamente y por Auth module (devuelve objeto con BigInt)
+  // Método usado internamente y por Auth module (devuelve objeto con string)
   async findByEmail(email: string) {
     return this.prisma.user.findUnique({
       where: { email },
@@ -182,7 +182,7 @@ export class UsersService {
     });
   }
 
-  async findById(id: bigint) {
+  async findById(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
       include: {
@@ -202,7 +202,7 @@ export class UsersService {
 
   private mapToResponse(user: any) {
     return {
-      id: user.id.toString(),
+      id: user.id,
       email: user.email,
       fullName: user.fullName,
       isActive: user.isActive,

@@ -59,7 +59,7 @@ enum ObservationCategory {
 }
 
 model Role {
-  id        BigInt   @id @default(autoincrement())
+  id        String   @id @default(uuid())
   name      RoleName @unique
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now()) @db.Timestamptz(6)
@@ -70,7 +70,7 @@ model Role {
 }
 
 model User {
-  id           BigInt    @id @default(autoincrement())
+  id           String    @id @default(uuid())
   email        String    @unique
   passwordHash String
   fullName     String
@@ -93,8 +93,8 @@ model User {
 }
 
 model UserRole {
-  userId     BigInt
-  roleId     BigInt
+  userId     String
+  roleId     String
   assignedAt DateTime  @default(now()) @db.Timestamptz(6)
   revokedAt  DateTime? @db.Timestamptz(6)
 
@@ -107,7 +107,7 @@ model UserRole {
 }
 
 model Company {
-  id           BigInt          @id @default(autoincrement())
+  id           String          @id @default(uuid())
   legalName    String
   nit          String?
   raiNumber    String?         @unique
@@ -134,8 +134,8 @@ model Company {
 }
 
 model CaseFile {
-  id         BigInt    @id @default(autoincrement())
-  companyId  BigInt    @unique
+  id         String    @id @default(uuid())
+  companyId  String    @unique
   code       String?   @unique
   fileNumber String?   @unique
   openedAt   DateTime  @default(now()) @db.Timestamptz(6)
@@ -163,8 +163,8 @@ model ProcedureType {
 }
 
 model Procedure {
-  id              BigInt          @id @default(autoincrement())
-  caseFileId      BigInt
+  id              String          @id @default(uuid())
+  caseFileId      String
   procedureTypeId Int
   procedureKind   ProcedureKind
   currentStatus   ProcedureStatus @default(RECIBIDO)
@@ -188,8 +188,8 @@ model Procedure {
 
   closedAt DateTime? @db.Timestamptz(6)
 
-  createdByUserId         BigInt
-  assignedInspectorUserId BigInt?
+  createdByUserId         String
+  assignedInspectorUserId String?
 
   abandonReason String?
 
@@ -216,11 +216,11 @@ model Procedure {
 }
 
 model ProcedureAudit {
-  id              BigInt           @id @default(autoincrement())
-  procedureId     BigInt
+  id              String           @id @default(uuid())
+  procedureId     String
   fromStatus      ProcedureStatus?
   toStatus        ProcedureStatus
-  changedByUserId BigInt
+  changedByUserId String
   changedAt       DateTime         @default(now()) @db.Timestamptz(6)
   note            String?
 
@@ -232,8 +232,8 @@ model ProcedureAudit {
 }
 
 model ProcedureCycle {
-  id          BigInt    @id @default(autoincrement())
-  procedureId BigInt
+  id          String    @id @default(uuid())
+  procedureId String
   cycleNumber Int
   openedAt    DateTime  @default(now()) @db.Timestamptz(6)
   closedAt    DateTime? @db.Timestamptz(6)
@@ -255,19 +255,19 @@ model ProcedureCycle {
 }
 
 model Observation {
-  id             BigInt   @id @default(autoincrement())
-  procedureId    BigInt
-  cycleId        BigInt?
+  id             String   @id @default(uuid())
+  procedureId    String
+  cycleId        String?
   summary        String
   details        String?
   isResolved     Boolean  @default(false)
   issuedAt       DateTime @default(now()) @db.Timestamptz(6)
-  issuedByUserId BigInt
+  issuedByUserId String
 
   category         String?
   priority         String?
   resolvedAt       DateTime? @db.Timestamptz(6)
-  resolvedByUserId BigInt?
+  resolvedByUserId String?
   resolutionNote   String?
 
   isActive  Boolean   @default(true)
@@ -282,9 +282,9 @@ model Observation {
 }
 
 model Document {
-  id          BigInt        @id @default(autoincrement())
-  procedureId BigInt
-  cycleId     BigInt?
+  id          String        @id @default(uuid())
+  procedureId String
+  cycleId     String?
   docGroup    DocumentGroup
   fileName    String
   storageKey  String
@@ -295,9 +295,9 @@ model Document {
   originalFileName String?
   checksum         String?
   isLatest         Boolean  @default(true)
-  replacedById     BigInt?
+  replacedById     String?
   version          Int      @default(1)
-  uploadedByUserId BigInt
+  uploadedByUserId String
   uploadedAt       DateTime @default(now()) @db.Timestamptz(6)
 
   isActive  Boolean   @default(true)
@@ -318,9 +318,9 @@ model Document {
 // ==============================
 
 model RefreshToken {
-  id        BigInt    @id @default(autoincrement())
+  id        String    @id @default(uuid())
   token     String    @unique
-  userId    BigInt
+  userId    String
   expiresAt DateTime  @db.Timestamptz(6)
   revoked   Boolean   @default(false)
   revokedAt DateTime? @db.Timestamptz(6)
@@ -336,9 +336,9 @@ model RefreshToken {
 }
 
 model AuditLog {
-  id        BigInt   @id @default(autoincrement())
+  id        String   @id @default(uuid())
   action    String
-  userId    BigInt?
+  userId    String?
   details   Json?
   createdAt DateTime @default(now()) @db.Timestamptz(6)
 
@@ -370,7 +370,7 @@ model NonWorkingDay {
   type        String?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now()) @db.Timestamptz(6)
-  createdBy   BigInt?
+  createdBy   String?
 
   @@unique([date])
   @@index([date])

@@ -28,7 +28,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
-  ) {}
+  ) { }
 
   // -----------------------------------------------------------------
   // Validación interna de credenciales
@@ -89,8 +89,8 @@ export class AuthService {
     await this.prisma.refreshToken.create({
       data: {
         token: refreshToken,
-        userId: BigInt(user.sub), // Convertir string → bigint
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 días (coincide con REFRESH_TOKEN_EXPIRES_IN)
+        userId: user.sub, // String
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         ip,
         userAgent,
       },
@@ -98,7 +98,7 @@ export class AuthService {
 
     await this.auditService.log({
       action: AUTH.AUDIT_ACTIONS.LOGIN_SUCCESS,
-      userId: BigInt(user.sub),
+      userId: user.sub,
       details: { ip, userAgent },
     });
 
@@ -138,7 +138,7 @@ export class AuthService {
       .map((ur) => ur.role.name as UserRole);
 
     const payload: UserPayloadDto = {
-      sub: user.id.toString(),
+      sub: user.id, // String
       email: user.email,
       roles,
       fullName: user.fullName,
@@ -151,7 +151,7 @@ export class AuthService {
         expiresIn: this.configService.get('JWT_EXPIRES_IN', '1h'),
       }),
       this.jwtService.signAsync(
-        { sub: user.id.toString(), jti: uuidv4() },
+        { sub: user.id, jti: uuidv4() },
         {
           secret: this.configService.get('JWT_SECRET'),
           expiresIn: this.configService.get('REFRESH_TOKEN_EXPIRES_IN', '7d'),
@@ -192,7 +192,7 @@ export class AuthService {
   // -----------------------------------------------------------------
   // Logout – revoca el refresh token específico (si se provee)
   // -----------------------------------------------------------------
-  async logout(userId: bigint, refreshToken?: string) {
+  async logout(userId: string, refreshToken?: string) {
     if (refreshToken) {
       await this.prisma.refreshToken.updateMany({
         where: { token: refreshToken, userId },
@@ -210,7 +210,7 @@ export class AuthService {
   // -----------------------------------------------------------------
   // Cambio de contraseña – valida actual, hashea nueva, revoca todos los tokens
   // -----------------------------------------------------------------
-  async changePassword(userId: bigint, dto: ChangePasswordRequestDto) {
+  async changePassword(userId: string, dto: ChangePasswordRequestDto) {
     if (dto.newPassword !== dto.confirmPassword) {
       throw new BadRequestException('Passwords do not match');
     }

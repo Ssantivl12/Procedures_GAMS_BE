@@ -3,7 +3,7 @@ import { PrismaService } from '../db/prisma.service';
 
 @Injectable()
 export class AuditService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   /**
    * Registra una acción de auditoría de seguridad.
@@ -11,7 +11,7 @@ export class AuditService {
    */
   async log(data: {
     action: string;
-    userId?: bigint | null;
+    userId?: string | null;
     details?: Record<string, any>;
   }): Promise<void> {
     // No usar await para no bloquear el flujo principal
