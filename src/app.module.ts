@@ -8,6 +8,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { AuditModule } from './audit/audit.module';
+import { CompaniesModule } from './companies/companies.module';
 import { PrismaService } from './db/prisma.service';
 import { AUTH } from './common/constants/auth.constants';
 
@@ -31,6 +32,7 @@ import { AUTH } from './common/constants/auth.constants';
     UsersModule,
     AuditModule,
     AuthModule,
+    CompaniesModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
