@@ -4,6 +4,10 @@ export const AUTH = {
     MAX_LENGTH: 50,
     BCRYPT_ROUNDS: 12,
   },
+  REFRESH_TOKEN: {
+    EXPIRES_IN: '7d',
+    EXPIRES_MS: 7 * 24 * 60 * 60 * 1000,
+  },
   RATE_LIMIT: {
     LOGIN: { ttl: 15 * 60, limit: 5 },      // 5 intentos / 15 min
     PASSWORD: { ttl: 60 * 60, limit: 3 },   // 3 intentos / 1 hora

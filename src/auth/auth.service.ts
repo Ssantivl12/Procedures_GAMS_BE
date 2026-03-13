@@ -90,7 +90,7 @@ export class AuthService {
       data: {
         token: refreshToken,
         userId: user.sub, // String
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        expiresAt: new Date(Date.now() + AUTH.REFRESH_TOKEN.EXPIRES_MS),
         ip,
         userAgent,
       },
@@ -169,7 +169,7 @@ export class AuthService {
         data: {
           token: newRefreshToken,
           userId: user.id,
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          expiresAt: new Date(Date.now() + AUTH.REFRESH_TOKEN.EXPIRES_MS),
           ip: refreshToken.ip,
           userAgent: refreshToken.userAgent,
         },
