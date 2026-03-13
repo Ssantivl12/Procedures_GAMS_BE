@@ -45,3 +45,6 @@ lerna-debug.log*
 
 prisma/migrations
 prisma/migrations/**
+
+contracts/
+.claude/
