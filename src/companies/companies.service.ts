@@ -112,9 +112,7 @@ export class CompaniesService {
         skip,
         take,
         include: {
-          caseFile: {
-            select: { id: true, code: true, fileNumber: true },
-          },
+          caseFile: { select: { id: true } },
         },
       }),
       this.prisma.company.count({ where }),
@@ -123,7 +121,10 @@ export class CompaniesService {
     const totalPages = Math.ceil(total / limitNum);
 
     return {
-      data,
+      data: data.map(({ caseFile, ...company }) => ({
+        ...company,
+        _count: { caseFile: caseFile ? 1 : 0 },
+      })),
       meta: {
         total,
         page: pageNum,
