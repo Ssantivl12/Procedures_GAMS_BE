@@ -41,22 +41,26 @@ async function main() {
     const usersToSeed = [
         {
             email: 'superadmin@gmail.com',
-            fullName: 'Super Admin User',
+            firstName: 'Super',
+            lastName: 'Admin',
             roleName: RoleName.SUPERADMIN,
         },
         {
             email: 'encargado@gmail.com',
-            fullName: 'Encargado User',
+            firstName: 'Encargado',
+            lastName: 'User',
             roleName: RoleName.ENCARGADO,
         },
         {
             email: 'secretaria@gmail.com',
-            fullName: 'Secretaria User',
+            firstName: 'Secretaria',
+            lastName: 'User',
             roleName: RoleName.SECRETARIA,
         },
         {
             email: 'inspector@gmail.com',
-            fullName: 'Inspector User',
+            firstName: 'Inspector',
+            lastName: 'User',
             roleName: RoleName.INSPECTOR,
         },
     ];
@@ -80,7 +84,8 @@ async function main() {
                 data: {
                     email: userData.email,
                     passwordHash: passwordHash,
-                    fullName: userData.fullName,
+                    firstName: userData.firstName,
+                    lastName: userData.lastName,
                     isActive: true,
                 },
             });

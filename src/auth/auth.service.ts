@@ -48,7 +48,8 @@ export class AuthService {
       sub: user.id.toString(), // JWT payload requiere string
       email: user.email,
       roles,
-      fullName: user.fullName,
+      firstName: user.firstName,
+      lastName: user.lastName,
       isActive: user.isActive,
     };
   }
@@ -86,15 +87,21 @@ export class AuthService {
       ),
     ]);
 
-    await this.prisma.refreshToken.create({
-      data: {
-        token: refreshToken,
-        userId: user.sub, // String
-        expiresAt: new Date(Date.now() + AUTH.REFRESH_TOKEN.EXPIRES_MS),
-        ip,
-        userAgent,
-      },
-    });
+    await this.prisma.$transaction([
+      this.prisma.refreshToken.create({
+        data: {
+          token: refreshToken,
+          userId: user.sub,
+          expiresAt: new Date(Date.now() + AUTH.REFRESH_TOKEN.EXPIRES_MS),
+          ip,
+          userAgent,
+        },
+      }),
+      this.prisma.user.update({
+        where: { id: user.sub },
+        data: { lastLoginAt: new Date() },
+      }),
+    ]);
 
     await this.auditService.log({
       action: AUTH.AUDIT_ACTIONS.LOGIN_SUCCESS,
@@ -113,6 +120,15 @@ export class AuthService {
   // Refresh token – rotación obligatoria (revoca anterior, crea nuevo)
   // -----------------------------------------------------------------
   async refreshToken(dto: RefreshTokenRequestDto): Promise<LoginResponseDto> {
+    // 1. Verify JWT signature first — reject tampered tokens before DB lookup
+    try {
+      await this.jwtService.verifyAsync(dto.refreshToken, {
+        secret: this.configService.get('JWT_SECRET'),
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
     const refreshToken = await this.prisma.refreshToken.findUnique({
       where: { token: dto.refreshToken },
       include: {
@@ -133,6 +149,11 @@ export class AuthService {
     }
 
     const user = refreshToken.user;
+
+    // 2. Reject if user has been deactivated since the token was issued
+    if (!user.isActive) {
+      throw new UnauthorizedException('Account is inactive');
+    }
     const roles = user.roles
       .filter((ur) => ur.role.isActive)
       .map((ur) => ur.role.name as UserRole);
@@ -141,7 +162,8 @@ export class AuthService {
       sub: user.id, // String
       email: user.email,
       roles,
-      fullName: user.fullName,
+      firstName: user.firstName,
+      lastName: user.lastName,
       isActive: user.isActive,
     };
 
@@ -190,12 +212,19 @@ export class AuthService {
   }
 
   // -----------------------------------------------------------------
-  // Logout – revoca el refresh token específico (si se provee)
+  // Logout – revoca el refresh token específico o todos los activos
   // -----------------------------------------------------------------
   async logout(userId: string, refreshToken?: string) {
     if (refreshToken) {
+      // Revoke only the provided session
       await this.prisma.refreshToken.updateMany({
         where: { token: refreshToken, userId },
+        data: { revoked: true, revokedAt: new Date() },
+      });
+    } else {
+      // No specific token → revoke all active sessions (logout from all devices)
+      await this.prisma.refreshToken.updateMany({
+        where: { userId, revoked: false },
         data: { revoked: true, revokedAt: new Date() },
       });
     }
@@ -213,6 +242,10 @@ export class AuthService {
   async changePassword(userId: string, dto: ChangePasswordRequestDto) {
     if (dto.newPassword !== dto.confirmPassword) {
       throw new BadRequestException('Passwords do not match');
+    }
+
+    if (dto.newPassword === dto.currentPassword) {
+      throw new BadRequestException('New password must be different from the current password');
     }
 
     const user = await this.usersService.findById(userId);

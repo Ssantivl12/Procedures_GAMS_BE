@@ -16,7 +16,8 @@ describe('AuthController (e2e) - BD real', () => {
   const testUser = {
     email: 'auth-test@example.com',
     password: '12345678',
-    fullName: 'Auth Test User',
+    firstName: 'Auth',
+    lastName: 'Test',
   };
 
   beforeAll(async () => {
@@ -56,7 +57,8 @@ describe('AuthController (e2e) - BD real', () => {
       data: {
         email: testUser.email,
         passwordHash,
-        fullName: testUser.fullName,
+        firstName: testUser.firstName,
+        lastName: testUser.lastName,
         isActive: true,
         roles: {
           create: {

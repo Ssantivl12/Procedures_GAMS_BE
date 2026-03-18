@@ -15,7 +15,8 @@ export interface UserPayloadDto {
   sub: string;
   email: string;
   roles: UserRole[];
-  fullName: string;
+  firstName: string;
+  lastName: string;
   isActive: boolean;
 }
 

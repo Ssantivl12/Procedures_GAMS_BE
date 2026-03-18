@@ -19,9 +19,13 @@ export class CreateUserDto {
   @MinLength(8, { message: USER_MESSAGES.VALIDATION.PASSWORD_MIN_LENGTH })
   password: string;
 
-  @IsString({ message: USER_MESSAGES.VALIDATION.FULLNAME_STRING })
-  @IsNotEmpty({ message: USER_MESSAGES.VALIDATION.FULLNAME_REQUIRED })
-  fullName: string;
+  @IsString({ message: USER_MESSAGES.VALIDATION.FIRSTNAME_STRING })
+  @IsNotEmpty({ message: USER_MESSAGES.VALIDATION.FIRSTNAME_REQUIRED })
+  firstName: string;
+
+  @IsString({ message: USER_MESSAGES.VALIDATION.LASTNAME_STRING })
+  @IsNotEmpty({ message: USER_MESSAGES.VALIDATION.LASTNAME_REQUIRED })
+  lastName: string;
 
   @IsArray({ message: USER_MESSAGES.VALIDATION.ROLES_ARRAY })
   @IsEnum(UserRole, {

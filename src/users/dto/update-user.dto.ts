@@ -21,8 +21,12 @@ export class UpdateUserDto {
   password?: string;
 
   @IsOptional()
-  @IsString({ message: USER_MESSAGES.VALIDATION.FULLNAME_STRING })
-  fullName?: string;
+  @IsString({ message: USER_MESSAGES.VALIDATION.FIRSTNAME_STRING })
+  firstName?: string;
+
+  @IsOptional()
+  @IsString({ message: USER_MESSAGES.VALIDATION.LASTNAME_STRING })
+  lastName?: string;
 
   @IsOptional()
   @IsArray({ message: USER_MESSAGES.VALIDATION.ROLES_ARRAY })

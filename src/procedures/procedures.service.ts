@@ -42,8 +42,8 @@ export class ProceduresService {
   private get procedureInclude() {
     return {
       procedureType: { select: { id: true, code: true, name: true } },
-      assignedInspector: { select: { id: true, fullName: true } },
-      createdBy: { select: { id: true, fullName: true } },
+      assignedInspector: { select: { id: true, firstName: true, lastName: true } },
+      createdBy: { select: { id: true, firstName: true, lastName: true } },
     };
   }
 
@@ -802,7 +802,7 @@ export class ProceduresService {
       where: { procedureId },
       orderBy: { changedAt: 'asc' },
       include: {
-        changedBy: { select: { id: true, fullName: true } },
+        changedBy: { select: { id: true, firstName: true, lastName: true } },
       },
     });
   }

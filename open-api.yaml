@@ -1,0 +1,1213 @@
+openapi: 3.0.3
+info:
+  title: GAMS – IRAPS API
+  description: |
+    API backend for the IRAPS environmental permit management system (GAMS).
+    All endpoints except POST /auth/login and POST /auth/refresh require a
+    Bearer JWT token obtained from the login endpoint.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3000
+    description: Development
+
+# ---------------------------------------------------------------------------
+# Security
+# ---------------------------------------------------------------------------
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # ------ Common ------
+    PaginationMeta:
+      type: object
+      properties:
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+        totalPages: { type: integer }
+        hasNextPage: { type: boolean }
+        hasPreviousPage: { type: boolean }
+
+    UserRef:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        firstName: { type: string }
+        lastName: { type: string }
+
+    # ------ Auth ------
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+
+    LoginResponse:
+      type: object
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        user:
+          type: object
+          properties:
+            sub: { type: string, format: uuid }
+            email: { type: string, format: email }
+            firstName: { type: string }
+            lastName: { type: string }
+            roles:
+              type: array
+              items:
+                type: string
+                enum: [SUPERADMIN, ENCARGADO, SECRETARIA, INSPECTOR]
+            isActive: { type: boolean }
+
+    RefreshTokenRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken: { type: string }
+
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword, confirmPassword]
+      properties:
+        currentPassword: { type: string }
+        newPassword: { type: string, minLength: 8 }
+        confirmPassword: { type: string, minLength: 8 }
+
+    # ------ Users ------
+    UserResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        firstName: { type: string }
+        lastName: { type: string }
+        fullName: { type: string, description: "Computed: firstName + lastName" }
+        isActive: { type: boolean }
+        roles:
+          type: array
+          items: { type: string, enum: [SUPERADMIN, ENCARGADO, SECRETARIA, INSPECTOR] }
+        createdAt: { type: string, format: date-time }
+        lastLoginAt: { type: string, format: date-time, nullable: true }
+
+    CreateUserRequest:
+      type: object
+      required: [email, password, firstName, lastName, roles]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        firstName: { type: string }
+        lastName: { type: string }
+        roles:
+          type: array
+          items: { type: string, enum: [SUPERADMIN, ENCARGADO, SECRETARIA, INSPECTOR] }
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        firstName: { type: string }
+        lastName: { type: string }
+        isActive: { type: boolean }
+        roles:
+          type: array
+          items: { type: string, enum: [SUPERADMIN, ENCARGADO, SECRETARIA, INSPECTOR] }
+
+    # ------ Companies ------
+    CompanyResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        legalName: { type: string }
+        nit: { type: string, nullable: true }
+        raiNumber: { type: string, nullable: true }
+        category: { type: string, enum: [C3, C4] }
+        address: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        legalRepName: { type: string, nullable: true }
+        legalRepCi: { type: string, nullable: true }
+        caebCodes: { type: array, items: { type: string } }
+        economicActivity: { type: string, nullable: true }
+        municipality: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        observations: { type: string, nullable: true }
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    CreateCompanyRequest:
+      type: object
+      required: [legalName, category]
+      properties:
+        legalName: { type: string }
+        nit: { type: string }
+        raiNumber: { type: string }
+        category: { type: string, enum: [C3, C4] }
+        address: { type: string }
+        phone: { type: string }
+        legalRepName: { type: string }
+        legalRepCi: { type: string }
+        caebCodes: { type: array, items: { type: string } }
+        economicActivity: { type: string }
+        municipality: { type: string }
+        email: { type: string, format: email }
+        observations: { type: string }
+
+    # ------ CaseFiles ------
+    CaseFileResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        companyId: { type: string, format: uuid }
+        code: { type: string, nullable: true }
+        fileNumber: { type: string, nullable: true }
+        openedAt: { type: string, format: date-time }
+        closedAt: { type: string, format: date-time, nullable: true }
+        isActive: { type: boolean }
+
+    # ------ Procedures ------
+    ProcedureStatus:
+      type: string
+      enum:
+        - RECIBIDO
+        - EN_REVISION
+        - OBSERVADO_PENDIENTE_RECOJO
+        - SUBSANACION_PENDIENTE_REINGRESO
+        - CERRADO
+        - ABANDONADO
+
+    ProcedureResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        caseFileId: { type: string, format: uuid }
+        procedureType:
+          type: object
+          properties:
+            id: { type: integer }
+            code: { type: string, enum: [RAI, MAI_PMA, IAA, CIERRE] }
+            name: { type: string }
+        procedureKind: { type: string, enum: [NUEVO, RENOVACION] }
+        currentStatus: { $ref: '#/components/schemas/ProcedureStatus' }
+        cycleCount: { type: integer }
+        receptionDate: { type: string, format: date }
+        reviewStartDate: { type: string, format: date, nullable: true }
+        deadlineDate: { type: string, format: date, nullable: true }
+        isOverdue: { type: boolean }
+        daysElapsed: { type: integer, nullable: true }
+        raiStatus:
+          type: string
+          enum: [VIGENTE, POR_VENCER, VENCIDO]
+          nullable: true
+          description: "Only for RAI procedures in CERRADO state"
+        assignedInspector: { allOf: [{ $ref: '#/components/schemas/UserRef' }], nullable: true }
+        createdBy: { $ref: '#/components/schemas/UserRef' }
+        observationsSummary:
+          type: object
+          description: "Only included in GET /procedures/:id"
+          properties:
+            total: { type: integer }
+            pending: { type: integer }
+            resolved: { type: integer }
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    ChangeStatusRequest:
+      type: object
+      required: [toStatus]
+      properties:
+        toStatus: { $ref: '#/components/schemas/ProcedureStatus' }
+        note: { type: string }
+        abandonReason: { type: string, description: "Required when toStatus=ABANDONADO" }
+        obsPickedDate: { type: string, format: date, description: "Required when toStatus=SUBSANACION_PENDIENTE_REINGRESO" }
+        reviewStartDate: { type: string, format: date, description: "Required when toStatus=EN_REVISION" }
+        approvalDate: { type: string, format: date, description: "Required when toStatus=CERRADO" }
+        approvalCertificate: { type: string, description: "Required when toStatus=CERRADO" }
+        expirationDate: { type: string, format: date, description: "Required when toStatus=CERRADO and procedureType=RAI" }
+
+    ProcedureCycleResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        procedureId: { type: string, format: uuid }
+        cycleNumber: { type: integer }
+        openedAt: { type: string, format: date-time }
+        closedAt: { type: string, format: date-time, nullable: true }
+        reentryDate: { type: string, format: date, nullable: true }
+        reviewDeadline: { type: string, format: date, nullable: true }
+        note: { type: string, nullable: true }
+
+    CreateCycleRequest:
+      type: object
+      required: [reentryDate]
+      properties:
+        reentryDate: { type: string, format: date }
+        reviewStartDate: { type: string, format: date }
+        note: { type: string }
+        autoTransition:
+          type: boolean
+          description: "If true, atomically transitions procedure to EN_REVISION"
+
+    ProcedureAuditEntry:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        procedureId: { type: string, format: uuid }
+        fromStatus: { $ref: '#/components/schemas/ProcedureStatus', nullable: true }
+        toStatus: { $ref: '#/components/schemas/ProcedureStatus' }
+        changedBy: { $ref: '#/components/schemas/UserRef' }
+        changedAt: { type: string, format: date-time }
+        note: { type: string, nullable: true }
+
+    # ------ Observations ------
+    ObservationResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        procedureId: { type: string, format: uuid }
+        cycleId: { type: string, format: uuid, nullable: true }
+        summary: { type: string }
+        details: { type: string, nullable: true }
+        category:
+          type: string
+          enum: [DOCUMENTAL, TECNICA, ADMINISTRATIVA, LEGAL, OTRA]
+          nullable: true
+        priority:
+          type: string
+          enum: [ALTA, MEDIA, BAJA]
+          nullable: true
+        isResolved: { type: boolean }
+        issuedAt: { type: string, format: date-time }
+        issuedBy: { $ref: '#/components/schemas/UserRef' }
+        resolvedAt: { type: string, format: date-time, nullable: true }
+        resolvedBy: { allOf: [{ $ref: '#/components/schemas/UserRef' }], nullable: true }
+        resolutionNote: { type: string, nullable: true }
+        isActive: { type: boolean }
+        deletedAt: { type: string, format: date-time, nullable: true }
+
+    CreateObservationRequest:
+      type: object
+      required: [cycleId, summary]
+      properties:
+        cycleId: { type: string, format: uuid }
+        summary: { type: string, minLength: 5, maxLength: 500 }
+        details: { type: string }
+        category: { type: string, enum: [DOCUMENTAL, TECNICA, ADMINISTRATIVA, LEGAL, OTRA] }
+        priority: { type: string, enum: [ALTA, MEDIA, BAJA] }
+
+    # ------ Error ------
+    ErrorResponse:
+      type: object
+      properties:
+        statusCode: { type: integer }
+        message: { type: string }
+        error: { type: string }
+
+security:
+  - bearerAuth: []
+
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
+paths:
+
+  # ============================================================
+  # AUTH
+  # ============================================================
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login and obtain access + refresh tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Tokens and user payload
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '401':
+          description: Invalid credentials
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Rotate refresh token and get new access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshTokenRequest' }
+      responses:
+        '200':
+          description: New token pair
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '401':
+          description: Invalid or expired refresh token
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke the current refresh token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '204': { description: Logged out }
+
+  /auth/change-password:
+    post:
+      tags: [Auth]
+      summary: Change own password (all roles)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangePasswordRequest' }
+      responses:
+        '204': { description: Password changed }
+        '400': { description: Passwords do not match }
+        '401': { description: Current password incorrect }
+
+  # ============================================================
+  # USERS
+  # ============================================================
+  /users:
+    post:
+      tags: [Users]
+      summary: Create a new user (SUPERADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateUserRequest' }
+      responses:
+        '201':
+          description: Created user
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserResponse' }
+        '409': { description: Email already registered }
+
+    get:
+      tags: [Users]
+      summary: List users with pagination and filters (SUPERADMIN)
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 20, maximum: 100 }
+        - in: query
+          name: search
+          schema: { type: string }
+          description: Search by firstName, lastName or email
+        - in: query
+          name: isActive
+          schema: { type: boolean }
+          description: Filter by active status (SUPERADMIN only for false)
+        - in: query
+          name: role
+          schema: { type: string, enum: [SUPERADMIN, ENCARGADO, SECRETARIA, INSPECTOR] }
+      responses:
+        '200':
+          description: Paginated user list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/UserResponse' }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Get own profile (all roles)
+      responses:
+        '200':
+          description: Current user profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserResponse' }
+
+  /users/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Users]
+      summary: Get user by ID (SUPERADMIN)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserResponse' }
+        '404': { description: User not found }
+    patch:
+      tags: [Users]
+      summary: Update user (SUPERADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateUserRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserResponse' }
+        '404': { description: User not found }
+        '409': { description: Email already in use }
+    delete:
+      tags: [Users]
+      summary: Soft-delete a user (SUPERADMIN, cannot delete self)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        '403': { description: Cannot delete own account }
+        '404': { description: User not found }
+
+  # ============================================================
+  # COMPANIES
+  # ============================================================
+  /companies:
+    post:
+      tags: [Companies]
+      summary: Create company (SUPERADMIN, SECRETARIA, ENCARGADO)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCompanyRequest' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompanyResponse' }
+        '409': { description: NIT or RAI number already exists }
+
+    get:
+      tags: [Companies]
+      summary: List companies (all roles)
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 10 }
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: category
+          schema: { type: string, enum: [C3, C4] }
+        - in: query
+          name: isActive
+          schema: { type: boolean }
+          description: SUPERADMIN only for false
+      responses:
+        '200':
+          description: Paginated company list
+
+  /companies/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Companies]
+      summary: Get company by ID (all roles)
+      parameters:
+        - in: query
+          name: include
+          schema: { type: string, enum: [caseFile] }
+          description: Include related case file
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompanyResponse' }
+        '404': { description: Company not found }
+    patch:
+      tags: [Companies]
+      summary: Update company (SUPERADMIN, SECRETARIA, ENCARGADO)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCompanyRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompanyResponse' }
+    delete:
+      tags: [Companies]
+      summary: Soft-delete company (SUPERADMIN, ENCARGADO)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        '409': { description: Company has active case file }
+
+  /companies/{id}/case-file:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Companies]
+      summary: Get case file linked to a company (all roles)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CaseFileResponse' }
+        '404': { description: Not found }
+
+  # ============================================================
+  # CASE FILES
+  # ============================================================
+  /case-files:
+    post:
+      tags: [CaseFiles]
+      summary: Create case file (SUPERADMIN, SECRETARIA, ENCARGADO)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [companyId]
+              properties:
+                companyId: { type: string, format: uuid }
+                code: { type: string }
+                fileNumber: { type: string }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CaseFileResponse' }
+
+    get:
+      tags: [CaseFiles]
+      summary: List case files (all roles)
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 10 }
+        - in: query
+          name: isActive
+          schema: { type: boolean }
+        - in: query
+          name: search
+          schema: { type: string }
+      responses:
+        '200':
+          description: Paginated case file list
+
+  /case-files/company/{companyId}:
+    parameters:
+      - in: path
+        name: companyId
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [CaseFiles]
+      summary: Get case file by company ID (all roles)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CaseFileResponse' }
+        '404': { description: Not found }
+
+  /case-files/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [CaseFiles]
+      summary: Get case file by ID (all roles)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CaseFileResponse' }
+        '404': { description: Not found }
+    patch:
+      tags: [CaseFiles]
+      summary: Update case file metadata (SUPERADMIN, ENCARGADO)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code: { type: string }
+                fileNumber: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CaseFileResponse' }
+    delete:
+      tags: [CaseFiles]
+      summary: Soft-delete case file (SUPERADMIN)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+
+  /case-files/{id}/close:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [CaseFiles]
+      summary: Close a case file (SUPERADMIN, ENCARGADO)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CaseFileResponse' }
+        '409': { description: Already closed or has active procedures }
+
+  /case-files/{id}/reopen:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [CaseFiles]
+      summary: Reopen a closed case file (SUPERADMIN)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CaseFileResponse' }
+
+  /case-files/{caseFileId}/procedures:
+    parameters:
+      - in: path
+        name: caseFileId
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Procedures]
+      summary: List procedures for a case file (all roles)
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 10 }
+        - in: query
+          name: status
+          schema: { $ref: '#/components/schemas/ProcedureStatus' }
+      responses:
+        '200':
+          description: Paginated procedure list
+
+  # ============================================================
+  # PROCEDURES
+  # ============================================================
+  /procedures:
+    post:
+      tags: [Procedures]
+      summary: Create a new procedure (SUPERADMIN, ENCARGADO, SECRETARIA)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [caseFileId, procedureTypeId, procedureKind, receptionDate]
+              properties:
+                caseFileId: { type: string, format: uuid }
+                procedureTypeId: { type: integer, minimum: 1 }
+                procedureKind: { type: string, enum: [NUEVO, RENOVACION] }
+                receptionDate: { type: string, format: date }
+                routeSheetNumber: { type: string }
+                internalFileNumber: { type: string }
+                generalNotes: { type: string }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProcedureResponse' }
+        '409':
+          description: |
+            Duplicate active procedure type, case file closed,
+            IAA requires closed MAI_PMA, or category incompatibility
+
+    get:
+      tags: [Procedures]
+      summary: List procedures with filters (all roles)
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 10 }
+        - in: query
+          name: caseFileId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: status
+          schema: { $ref: '#/components/schemas/ProcedureStatus' }
+        - in: query
+          name: procedureTypeCode
+          schema: { type: string, enum: [RAI, MAI_PMA, IAA, CIERRE] }
+        - in: query
+          name: procedureKind
+          schema: { type: string, enum: [NUEVO, RENOVACION] }
+        - in: query
+          name: assignedInspectorId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: isOverdue
+          schema: { type: boolean }
+        - in: query
+          name: search
+          schema: { type: string }
+          description: Search by routeSheetNumber, internalFileNumber, approvalCertificate
+      responses:
+        '200':
+          description: Paginated procedure list
+
+  /procedures/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Procedures]
+      summary: Get procedure by ID — includes observationsSummary (all roles)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProcedureResponse' }
+        '404': { description: Procedure not found }
+    patch:
+      tags: [Procedures]
+      summary: Update editable fields (SUPERADMIN, ENCARGADO)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                routeSheetNumber: { type: string }
+                internalFileNumber: { type: string }
+                generalNotes: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProcedureResponse' }
+    delete:
+      tags: [Procedures]
+      summary: Soft-delete procedure (SUPERADMIN; only CERRADO or ABANDONADO)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  id: { type: string, format: uuid }
+        '409': { description: Cannot delete an active procedure }
+
+  /procedures/{id}/status:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [Procedures]
+      summary: Change procedure status (role varies per transition)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangeStatusRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProcedureResponse' }
+        '403': { description: Role not authorized for this transition }
+        '422':
+          description: |
+            Invalid transition OR
+            attempting OBSERVADO_PENDIENTE_RECOJO with no pending observations in the active cycle
+
+  /procedures/{id}/assign:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [Procedures]
+      summary: Assign inspector (SUPERADMIN, ENCARGADO)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [inspectorUserId]
+              properties:
+                inspectorUserId: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProcedureResponse' }
+        '404': { description: Inspector not found }
+        '403': { description: Target user lacks required role }
+
+  /procedures/{id}/audit:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Procedures]
+      summary: Get full status-change audit trail for a procedure (all roles)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ProcedureAuditEntry' }
+
+  /procedures/{id}/cycles:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [Procedures]
+      summary: Create a new review cycle (SUPERADMIN, ENCARGADO, SECRETARIA)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCycleRequest' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProcedureCycleResponse' }
+    get:
+      tags: [Procedures]
+      summary: List all cycles for a procedure (all roles)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ProcedureCycleResponse' }
+
+  /procedures/{id}/cycles/{cycleId}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+      - in: path
+        name: cycleId
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Procedures]
+      summary: Get a specific cycle (all roles)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProcedureCycleResponse' }
+        '404': { description: Cycle not found }
+
+  /procedures/{id}/cycles/{cycleId}/close:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+      - in: path
+        name: cycleId
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [Procedures]
+      summary: Close a cycle (SUPERADMIN, ENCARGADO, INSPECTOR)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProcedureCycleResponse' }
+        '409': { description: Cycle already closed }
+
+  # ============================================================
+  # OBSERVATIONS
+  # ============================================================
+  /procedures/{procedureId}/observations:
+    parameters:
+      - in: path
+        name: procedureId
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [Observations]
+      summary: Create an observation (INSPECTOR, ENCARGADO, SUPERADMIN)
+      description: Procedure must be in EN_REVISION. cycleId must belong to an open cycle.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateObservationRequest' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ObservationResponse' }
+        '409':
+          description: Procedure not in EN_REVISION or cycle is closed
+
+    get:
+      tags: [Observations]
+      summary: List observations for a procedure (all roles)
+      description: Response includes a `groupedByCycle` field with all observations grouped by cycle.
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 10, maximum: 100 }
+        - in: query
+          name: cycleId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: isResolved
+          schema: { type: boolean }
+        - in: query
+          name: category
+          schema: { type: string, enum: [DOCUMENTAL, TECNICA, ADMINISTRATIVA, LEGAL, OTRA] }
+        - in: query
+          name: priority
+          schema: { type: string, enum: [ALTA, MEDIA, BAJA] }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ObservationResponse' }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+                  groupedByCycle:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        cycleId: { type: string, format: uuid, nullable: true }
+                        cycleNumber: { type: integer, nullable: true }
+                        observations:
+                          type: array
+                          items: { $ref: '#/components/schemas/ObservationResponse' }
+
+  /procedures/{procedureId}/observations/{id}:
+    parameters:
+      - in: path
+        name: procedureId
+        required: true
+        schema: { type: string, format: uuid }
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Observations]
+      summary: Get observation by ID (all roles)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ObservationResponse' }
+        '404': { description: Observation not found }
+    patch:
+      tags: [Observations]
+      summary: Edit summary/details/category/priority (INSPECTOR, ENCARGADO, SUPERADMIN)
+      description: Only allowed if isResolved = false.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                summary: { type: string, minLength: 5, maxLength: 500 }
+                details: { type: string }
+                category: { type: string, enum: [DOCUMENTAL, TECNICA, ADMINISTRATIVA, LEGAL, OTRA] }
+                priority: { type: string, enum: [ALTA, MEDIA, BAJA] }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ObservationResponse' }
+        '409': { description: Observation already resolved; reopen first }
+    delete:
+      tags: [Observations]
+      summary: Soft-delete observation (SUPERADMIN; only if isResolved = true)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  id: { type: string, format: uuid }
+        '409': { description: Cannot delete a pending (unresolved) observation }
+
+  /procedures/{procedureId}/observations/{id}/resolve:
+    parameters:
+      - in: path
+        name: procedureId
+        required: true
+        schema: { type: string, format: uuid }
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [Observations]
+      summary: Mark observation as resolved (INSPECTOR, ENCARGADO, SUPERADMIN)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resolutionNote: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ObservationResponse' }
+        '409': { description: Observation already resolved }
+
+  /procedures/{procedureId}/observations/{id}/reopen:
+    parameters:
+      - in: path
+        name: procedureId
+        required: true
+        schema: { type: string, format: uuid }
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [Observations]
+      summary: Reopen a resolved observation (ENCARGADO, SUPERADMIN)
+      description: |
+        Clears isResolved, resolvedAt, resolvedByUserId and resolutionNote.
+        Useful when inspector resolved by mistake.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ObservationResponse' }
+        '409': { description: Observation is not resolved }
+
+  # ============================================================
+  # CYCLES (direct access)
+  # ============================================================
+  /cycles/{cycleId}/observations:
+    parameters:
+      - in: path
+        name: cycleId
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Observations]
+      summary: List all observations for a specific cycle (all roles)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ObservationResponse' }
+        '404': { description: Cycle not found }

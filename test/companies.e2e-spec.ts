@@ -72,10 +72,10 @@ describe('CompaniesController (e2e)', () => {
 
     // 6. Crear usuarios de prueba con cada rol
     const users = [
-        { email: 'test-superadmin@test.com', fullName: 'Test SuperAdmin', role: RoleName.SUPERADMIN },
-        { email: 'test-encargado@test.com', fullName: 'Test Encargado', role: RoleName.ENCARGADO },
-        { email: 'test-secretaria@test.com', fullName: 'Test Secretaria', role: RoleName.SECRETARIA },
-        { email: 'test-inspector@test.com', fullName: 'Test Inspector', role: RoleName.INSPECTOR },
+        { email: 'test-superadmin@test.com', firstName: 'Test', lastName: 'SuperAdmin', role: RoleName.SUPERADMIN },
+        { email: 'test-encargado@test.com', firstName: 'Test', lastName: 'Encargado', role: RoleName.ENCARGADO },
+        { email: 'test-secretaria@test.com', firstName: 'Test', lastName: 'Secretaria', role: RoleName.SECRETARIA },
+        { email: 'test-inspector@test.com', firstName: 'Test', lastName: 'Inspector', role: RoleName.INSPECTOR },
     ];
 
     for (const userData of users) {
@@ -87,7 +87,8 @@ describe('CompaniesController (e2e)', () => {
         data: {
             email: userData.email,
             passwordHash,
-            fullName: userData.fullName,
+            firstName: userData.firstName,
+            lastName: userData.lastName,
             isActive: true,
         },
         });

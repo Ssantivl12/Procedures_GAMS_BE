@@ -1,81 +1,132 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { Prisma } from '@prisma/client';
 import { AUTH } from '../common/constants/auth.constants';
 import { USER_MESSAGES } from '../common/constants/user.constants';
+import { UserRole } from '../common/constants/role.constants';
 import { PrismaService } from '../db/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { QueryUsersDto } from './dto/query-users.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
+
+  // ---------------------------------------------------------------------------
+  // create
+  // ---------------------------------------------------------------------------
 
   async create(createUserDto: CreateUserDto) {
     const existingUser = await this.prisma.user.findUnique({
       where: { email: createUserDto.email },
     });
-
     if (existingUser) {
       throw new ConflictException(USER_MESSAGES.ERROR.EMAIL_ALREADY_EXISTS);
     }
 
+    // Deduplicate roles before validation to avoid false length mismatch
+    const uniqueRoles = [...new Set(createUserDto.roles)];
     const rolesToAdd = await this.prisma.role.findMany({
-      where: { name: { in: createUserDto.roles } },
+      where: { name: { in: uniqueRoles } },
     });
-
-    if (rolesToAdd.length !== createUserDto.roles.length) {
+    if (rolesToAdd.length !== uniqueRoles.length) {
       throw new BadRequestException(USER_MESSAGES.ERROR.INVALID_ROLES);
     }
 
-    const saltRounds = AUTH.PASSWORD.BCRYPT_ROUNDS;
-    const passwordHash = await bcrypt.hash(createUserDto.password, saltRounds);
+    const passwordHash = await bcrypt.hash(
+      createUserDto.password,
+      AUTH.PASSWORD.BCRYPT_ROUNDS,
+    );
 
     const user = await this.prisma.$transaction(async (tx) => {
       const newUser = await tx.user.create({
         data: {
           email: createUserDto.email,
           passwordHash,
-          fullName: createUserDto.fullName,
+          firstName: createUserDto.firstName,
+          lastName: createUserDto.lastName,
         },
       });
-
       await tx.userRole.createMany({
-        data: rolesToAdd.map((role) => ({
-          userId: newUser.id,
-          roleId: role.id,
-        })),
+        data: rolesToAdd.map((role) => ({ userId: newUser.id, roleId: role.id })),
       });
-
       return newUser;
     });
 
     return this.mapToResponse(await this.findById(user.id));
   }
 
-  async findAll() {
-    const users = await this.prisma.user.findMany({
-      where: { deletedAt: null },
-      include: {
-        roles: {
-          include: { role: true },
-          where: { revokedAt: null },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+  // ---------------------------------------------------------------------------
+  // findAll — paginated with search and role filter
+  // ---------------------------------------------------------------------------
 
-    return users.map((user) => this.mapToResponse(user));
+  async findAll(query: QueryUsersDto, requestingUserRoles: string[]) {
+    const { page = 1, limit = 20, search, isActive, role } = query;
+    const pageNum = Number(page);
+    const limitNum = Number(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    const isSuperAdmin = requestingUserRoles.includes(UserRole.SUPERADMIN);
+
+    const where: Prisma.UserWhereInput = {
+      deletedAt: null,
+      isActive: isSuperAdmin && isActive !== undefined ? isActive : true,
+    };
+
+    if (search) {
+      where.OR = [
+        { firstName: { contains: search, mode: 'insensitive' } },
+        { lastName: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (role) {
+      where.roles = { some: { role: { name: role }, revokedAt: null } };
+    }
+
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        skip,
+        take: limitNum,
+        include: { roles: { include: { role: true }, where: { revokedAt: null } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(total / limitNum);
+
+    return {
+      data: users.map((u) => this.mapToResponse(u)),
+      meta: { total, page: pageNum, limit: limitNum, totalPages,
+        hasNextPage: pageNum < totalPages, hasPreviousPage: pageNum > 1 },
+    };
   }
+
+  // ---------------------------------------------------------------------------
+  // findOne / findMe
+  // ---------------------------------------------------------------------------
 
   async findOne(id: string) {
-    const user = await this.findById(id);
-    return this.mapToResponse(user);
+    return this.mapToResponse(await this.findById(id));
   }
+
+  async findMe(userId: string) {
+    return this.mapToResponse(await this.findById(userId));
+  }
+
+  // ---------------------------------------------------------------------------
+  // update
+  // ---------------------------------------------------------------------------
 
   async update(id: string, updateUserDto: UpdateUserDto) {
     const user = await this.findById(id);
@@ -84,71 +135,50 @@ export class UsersService {
       const existing = await this.prisma.user.findUnique({
         where: { email: updateUserDto.email },
       });
-      if (existing) {
-        throw new ConflictException(USER_MESSAGES.ERROR.EMAIL_IN_USE);
-      }
+      if (existing) throw new ConflictException(USER_MESSAGES.ERROR.EMAIL_IN_USE);
     }
 
     let passwordHash: string | undefined;
     if (updateUserDto.password) {
-      const saltRounds = AUTH.PASSWORD.BCRYPT_ROUNDS;
-      passwordHash = await bcrypt.hash(updateUserDto.password, saltRounds);
+      passwordHash = await bcrypt.hash(updateUserDto.password, AUTH.PASSWORD.BCRYPT_ROUNDS);
     }
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { id },
-        data: {
-          email: updateUserDto.email,
-          fullName: updateUserDto.fullName,
-          isActive: updateUserDto.isActive,
-          passwordHash,
-        },
-      });
+      const data: Prisma.UserUpdateInput = {};
+      if (updateUserDto.email !== undefined) data.email = updateUserDto.email;
+      if (updateUserDto.firstName !== undefined) data.firstName = updateUserDto.firstName;
+      if (updateUserDto.lastName !== undefined) data.lastName = updateUserDto.lastName;
+      if (updateUserDto.isActive !== undefined) data.isActive = updateUserDto.isActive;
+      if (passwordHash !== undefined) data.passwordHash = passwordHash;
 
-      if (updateUserDto.roles) {
-        const newRoles = await tx.role.findMany({
-          where: { name: { in: updateUserDto.roles } },
-        });
+      await tx.user.update({ where: { id }, data });
 
-        if (newRoles.length !== updateUserDto.roles.length) {
+      if (updateUserDto.roles !== undefined) {
+        const uniqueRoles = [...new Set(updateUserDto.roles)];
+        const newRoles = await tx.role.findMany({ where: { name: { in: uniqueRoles } } });
+        if (newRoles.length !== uniqueRoles.length) {
           throw new BadRequestException(USER_MESSAGES.ERROR.INVALID_ROLES);
         }
 
-        const currentAssignments = await tx.userRole.findMany({
-          where: { userId: id },
-          include: { role: true },
-        });
-
         const newRoleIds = newRoles.map((r) => r.id);
+        const currentAssignments = await tx.userRole.findMany({ where: { userId: id } });
 
-        // Revocar roles activos que no están en la nueva lista
         await tx.userRole.updateMany({
-          where: {
-            userId: id,
-            roleId: { notIn: newRoleIds },
-            revokedAt: null,
-          },
+          where: { userId: id, roleId: { notIn: newRoleIds }, revokedAt: null },
           data: { revokedAt: new Date() },
         });
 
-        // Asignar o reactivar roles
         for (const role of newRoles) {
-          const assignment = currentAssignments.find(
-            (a) => a.roleId === role.id,
-          );
-
-          if (assignment) {
-            if (assignment.revokedAt) {
+          const existing = currentAssignments.find((a) => a.roleId === role.id);
+          if (existing) {
+            if (existing.revokedAt) {
               await tx.userRole.update({
                 where: { userId_roleId: { userId: id, roleId: role.id } },
                 data: { revokedAt: null, assignedAt: new Date() },
               });
             }
           } else {
-            await tx.userRole.create({
-              data: { userId: id, roleId: role.id },
-            });
+            await tx.userRole.create({ data: { userId: id, roleId: role.id } });
           }
         }
       }
@@ -157,46 +187,39 @@ export class UsersService {
     return this.mapToResponse(await this.findById(id));
   }
 
-  async remove(id: string) {
+  // ---------------------------------------------------------------------------
+  // remove (soft delete)
+  // ---------------------------------------------------------------------------
+
+  async remove(id: string, requestingUserId: string) {
+    if (id === requestingUserId) {
+      throw new ForbiddenException(USER_MESSAGES.ERROR.CANNOT_DELETE_SELF);
+    }
     await this.findById(id);
     await this.prisma.user.update({
       where: { id },
-      data: {
-        isActive: false,
-        deletedAt: new Date(),
-      },
+      data: { isActive: false, deletedAt: new Date() },
     });
     return { message: USER_MESSAGES.SUCCESS.USER_DELETED };
   }
 
-  // Método usado internamente y por Auth module (devuelve objeto con string)
+  // ---------------------------------------------------------------------------
+  // Internal helpers
+  // ---------------------------------------------------------------------------
+
   async findByEmail(email: string) {
     return this.prisma.user.findUnique({
       where: { email },
-      include: {
-        roles: {
-          include: { role: true },
-          where: { revokedAt: null },
-        },
-      },
+      include: { roles: { include: { role: true }, where: { revokedAt: null } } },
     });
   }
 
   async findById(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      include: {
-        roles: {
-          include: { role: true },
-          where: { revokedAt: null },
-        },
-      },
+      include: { roles: { include: { role: true }, where: { revokedAt: null } } },
     });
-
-    if (!user || user.deletedAt) {
-      throw new NotFoundException(USER_MESSAGES.ERROR.NOT_FOUND);
-    }
-
+    if (!user || user.deletedAt) throw new NotFoundException(USER_MESSAGES.ERROR.NOT_FOUND);
     return user;
   }
 
@@ -204,9 +227,11 @@ export class UsersService {
     return {
       id: user.id,
       email: user.email,
-      fullName: user.fullName,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      fullName: `${user.firstName} ${user.lastName}`.trim(),
       isActive: user.isActive,
-      roles: user.roles.map((ur) => ur.role.name),
+      roles: user.roles.map((ur: any) => ur.role.name),
       createdAt: user.createdAt,
       lastLoginAt: user.lastLoginAt,
     };

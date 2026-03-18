@@ -24,8 +24,8 @@ export class ObservationsService {
 
   private get observationInclude() {
     return {
-      issuedBy: { select: { id: true, fullName: true } },
-      resolvedBy: { select: { id: true, fullName: true } },
+      issuedBy: { select: { id: true, firstName: true, lastName: true } },
+      resolvedBy: { select: { id: true, firstName: true, lastName: true } },
     };
   }
 
