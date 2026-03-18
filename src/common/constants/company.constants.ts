@@ -1,6 +1,7 @@
 export const COMPANY_MESSAGES = {
   ERROR: {
     RAI_EXISTS: 'RAI number already exists',
+    NIT_EXISTS: 'NIT already registered for another company',
     NOT_FOUND: 'Company not found',
     HAS_ACTIVE_CASE_FILE: 'Cannot delete company with active case file',
     ALREADY_DELETED: 'Company already deleted',

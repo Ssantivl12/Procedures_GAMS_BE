@@ -19,6 +19,15 @@ export class CompaniesService {
       throw new BadRequestException(COMPANY_MESSAGES.ERROR.CATEGORY_REQUIRED);
     }
 
+    if (dto.nit) {
+      const existing = await this.prisma.company.findFirst({
+        where: { nit: dto.nit },
+      });
+      if (existing) {
+        throw new ConflictException(COMPANY_MESSAGES.ERROR.NIT_EXISTS);
+      }
+    }
+
     if (dto.raiNumber) {
       const existing = await this.prisma.company.findUnique({
         where: { raiNumber: dto.raiNumber },
@@ -114,12 +123,7 @@ export class CompaniesService {
     const totalPages = Math.ceil(total / limitNum);
 
     return {
-      data: data.map((company) => ({
-        ...company,
-        _count: {
-          caseFile: company.caseFile ? 1 : 0,
-        },
-      })),
+      data,
       meta: {
         total,
         page: pageNum,
@@ -141,6 +145,17 @@ export class CompaniesService {
   }
 
   async update(id: string, dto: UpdateCompanyDto, userId: string): Promise<Company> {
+    const current = await this.prisma.company.findUnique({ where: { id } });
+
+    if (dto.nit) {
+      const existing = await this.prisma.company.findFirst({
+        where: { nit: dto.nit, id: { not: id } },
+      });
+      if (existing) {
+        throw new ConflictException(COMPANY_MESSAGES.ERROR.NIT_EXISTS);
+      }
+    }
+
     if (dto.raiNumber) {
       const existing = await this.prisma.company.findFirst({
         where: {
@@ -173,10 +188,20 @@ export class CompaniesService {
       data,
     });
 
+    const changedFields = Object.keys(data).reduce<
+      Record<string, { before: unknown; after: unknown }>
+    >((acc, key) => {
+      acc[key] = {
+        before: current ? current[key as keyof Company] : undefined,
+        after: (data as Record<string, unknown>)[key],
+      };
+      return acc;
+    }, {});
+
     await this.auditService.log({
       action: COMPANY_AUDIT_ACTIONS.UPDATED,
       userId,
-      details: { companyId: id },
+      details: { companyId: id, changes: changedFields },
     });
 
     return company;

@@ -109,7 +109,7 @@ model UserRole {
 model Company {
   id           String          @id @default(uuid())
   legalName    String
-  nit          String?
+  nit          String?         @unique
   raiNumber    String?         @unique
   category     CompanyCategory
   address      String?
