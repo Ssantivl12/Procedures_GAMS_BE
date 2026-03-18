@@ -14,6 +14,7 @@ import { ProceduresModule } from './procedures/procedures.module';
 import { ObservationsModule } from './observations/observations.module';
 import { DocumentsModule } from './documents/documents.module';
 import { ConfigurationModule } from './configuration/configuration.module';
+import { ReportsModule } from './reports/reports.module';
 import { PrismaService } from './db/prisma.service';
 import { AUTH } from './common/constants/auth.constants';
 
@@ -43,6 +44,7 @@ import { AUTH } from './common/constants/auth.constants';
     ObservationsModule,
     DocumentsModule,
     ConfigurationModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
