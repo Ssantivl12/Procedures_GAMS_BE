@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import * as Joi from 'joi';
 
 import { AppController } from './app.controller';
@@ -35,6 +36,7 @@ import { AUTH } from './common/constants/auth.constants';
         limit: AUTH.RATE_LIMIT.LOGIN.limit,
       },
     ]),
+    ScheduleModule.forRoot(),
     UsersModule,
     AuditModule,
     AuthModule,

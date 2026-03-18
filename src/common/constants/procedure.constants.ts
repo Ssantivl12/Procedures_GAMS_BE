@@ -95,6 +95,7 @@ export const PROCEDURE_MESSAGES = {
     CYCLE_NOT_FOUND: 'Procedure cycle not found',
     CYCLE_ALREADY_CLOSED: 'Cycle is already closed',
     CYCLE_REQUIRES_SUBSANACION: 'autoTransition requires procedure to be in SUBSANACION_PENDIENTE_REINGRESO',
+    OPEN_CYCLE_EXISTS: 'There is already an open cycle for this procedure. Close it before creating a new one.',
   },
   SUCCESS: {
     DELETED: 'Procedure deleted successfully',

@@ -421,7 +421,7 @@ export class DashboardService {
         ? Math.round(
             closedThisMonthProcs.reduce((sum, p) => {
               const days = p.closedAt
-                ? Math.floor((p.closedAt.getTime() - p.receptionDate.getTime()) / 86400000)
+                ? this.cache.countWorkingDays(p.receptionDate, p.closedAt)
                 : 0;
               return sum + days;
             }, 0) / closedThisMonthProcs.length,

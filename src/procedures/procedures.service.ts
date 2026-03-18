@@ -531,6 +531,14 @@ export class ProceduresService {
 
       // Create ProcedureCycle for first or re-entry EN_REVISION
       if (isFirstEnRevision || isReentry) {
+        // Guard: reject if there is already an open (unclosed) cycle (BUG-04)
+        const openCycle = await tx.procedureCycle.findFirst({
+          where: { procedureId: id, closedAt: null, isActive: true },
+        });
+        if (openCycle) {
+          throw new ConflictException(PROCEDURE_MESSAGES.ERROR.OPEN_CYCLE_EXISTS);
+        }
+
         await tx.procedureCycle.create({
           data: {
             procedureId: id,
@@ -651,6 +659,14 @@ export class ProceduresService {
     // autoTransition requires procedure to be in SUBSANACION_PENDIENTE_REINGRESO
     if (dto.autoTransition && procedure.currentStatus !== ProcedureStatus.SUBSANACION_PENDIENTE_REINGRESO) {
       throw new UnprocessableEntityException(PROCEDURE_MESSAGES.ERROR.CYCLE_REQUIRES_SUBSANACION);
+    }
+
+    // Guard: reject if there is already an open (unclosed) cycle
+    const openCycle = await this.prisma.procedureCycle.findFirst({
+      where: { procedureId, closedAt: null, isActive: true },
+    });
+    if (openCycle) {
+      throw new ConflictException(PROCEDURE_MESSAGES.ERROR.OPEN_CYCLE_EXISTS);
     }
 
     const newCycleNumber = procedure.cycleCount + 1;
