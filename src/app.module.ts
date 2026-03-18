@@ -11,6 +11,7 @@ import { AuditModule } from './audit/audit.module';
 import { CompaniesModule } from './companies/companies.module';
 import { CasesModule } from './cases/cases.module';
 import { ProceduresModule } from './procedures/procedures.module';
+import { ObservationsModule } from './observations/observations.module';
 import { PrismaService } from './db/prisma.service';
 import { AUTH } from './common/constants/auth.constants';
 
@@ -37,6 +38,7 @@ import { AUTH } from './common/constants/auth.constants';
     CompaniesModule,
     CasesModule,
     ProceduresModule,
+    ObservationsModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],

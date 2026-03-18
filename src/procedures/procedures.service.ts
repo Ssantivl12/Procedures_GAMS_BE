@@ -318,7 +318,18 @@ export class ProceduresService {
     if (!procedure || !procedure.isActive) {
       throw new NotFoundException(PROCEDURE_MESSAGES.ERROR.NOT_FOUND);
     }
-    return this.buildResponse(procedure);
+
+    const [total, pending] = await Promise.all([
+      this.prisma.observation.count({ where: { procedureId: id, isActive: true } }),
+      this.prisma.observation.count({
+        where: { procedureId: id, isActive: true, isResolved: false },
+      }),
+    ]);
+
+    return {
+      ...this.buildResponse(procedure),
+      observationsSummary: { total, pending, resolved: total - pending },
+    };
   }
 
   // ---------------------------------------------------------------------------
@@ -414,13 +425,24 @@ export class ProceduresService {
         throw new ForbiddenException(PROCEDURE_MESSAGES.ERROR.FORBIDDEN_TRANSITION);
       }
 
-      // EN_REVISION → OBSERVADO requires at least 1 active observation
+      // EN_REVISION → OBSERVADO requires at least 1 pending observation in the active cycle
       if (toStatus === ProcedureStatus.OBSERVADO_PENDIENTE_RECOJO) {
-        const activeObsCount = await this.prisma.observation.count({
-          where: { procedureId: id, isResolved: false, isActive: true },
+        const activeCycle = await this.prisma.procedureCycle.findFirst({
+          where: { procedureId: id, closedAt: null, isActive: true },
+          orderBy: { cycleNumber: 'desc' },
         });
-        if (activeObsCount === 0) {
-          throw new ConflictException(PROCEDURE_MESSAGES.ERROR.REQUIRES_ACTIVE_OBSERVATION);
+        const pendingObsCount = await this.prisma.observation.count({
+          where: {
+            procedureId: id,
+            ...(activeCycle ? { cycleId: activeCycle.id } : {}),
+            isResolved: false,
+            isActive: true,
+          },
+        });
+        if (pendingObsCount === 0) {
+          throw new UnprocessableEntityException(
+            PROCEDURE_MESSAGES.ERROR.REQUIRES_ACTIVE_OBSERVATION,
+          );
         }
       }
 

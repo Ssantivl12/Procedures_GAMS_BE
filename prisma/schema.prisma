@@ -86,8 +86,9 @@ model User {
   audits             ProcedureAudit[] @relation("ProcedureAuditChangedBy")
   refreshTokens      RefreshToken[]   @relation("UserRefreshTokens")
   auditLogs          AuditLog[]       @relation("UserAuditLogs")
-  issuedObservations Observation[]
-  uploadedDocuments  Document[]
+  issuedObservations   Observation[] @relation("ObservationIssuedBy")
+  resolvedObservations Observation[] @relation("ObservationResolvedBy")
+  uploadedDocuments    Document[]
 
   @@map("user")
 }
@@ -273,9 +274,10 @@ model Observation {
   isActive  Boolean   @default(true)
   deletedAt DateTime? @db.Timestamptz(6)
 
-  procedure Procedure       @relation(fields: [procedureId], references: [id], onDelete: Restrict)
-  cycle     ProcedureCycle? @relation(fields: [cycleId], references: [id], onDelete: Restrict)
-  issuedBy  User            @relation(fields: [issuedByUserId], references: [id], onDelete: Restrict)
+  procedure  Procedure       @relation(fields: [procedureId], references: [id], onDelete: Restrict)
+  cycle      ProcedureCycle? @relation(fields: [cycleId], references: [id], onDelete: Restrict)
+  issuedBy   User            @relation("ObservationIssuedBy", fields: [issuedByUserId], references: [id], onDelete: Restrict)
+  resolvedBy User?           @relation("ObservationResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
 
   @@index([procedureId, issuedAt])
   @@map("observation")
