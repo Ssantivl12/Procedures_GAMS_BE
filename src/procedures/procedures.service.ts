@@ -7,11 +7,14 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../db/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { WorkingDaysService } from '../common/services/working-days.service';
 import { CreateProcedureDto } from './dto/create-procedure.dto';
 import { UpdateProcedureDto } from './dto/update-procedure.dto';
 import { ChangeStatusDto } from './dto/change-status.dto';
 import { AssignInspectorDto } from './dto/assign-inspector.dto';
 import { QueryProceduresDto } from './dto/query-procedures.dto';
+import { CreateCycleDto } from './dto/create-cycle.dto';
+import { CloseCycleDto } from './dto/close-cycle.dto';
 import { ProcedureStatus, ProcedureTypeCode, CompanyCategory, Prisma } from '@prisma/client';
 import { UserRole } from '../common/constants/role.constants';
 import {
@@ -29,6 +32,7 @@ export class ProceduresService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
+    private readonly workingDaysService: WorkingDaysService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -43,8 +47,47 @@ export class ProceduresService {
     };
   }
 
+  /**
+   * Computes raiStatus at response time — not stored in the DB.
+   * Applies only to RAI procedures in CERRADO state.
+   */
+  private computeRaiStatus(procedure: any): 'VIGENTE' | 'POR_VENCER' | 'VENCIDO' | null {
+    if (
+      procedure.procedureType?.code !== ProcedureTypeCode.RAI ||
+      procedure.currentStatus !== ProcedureStatus.CERRADO ||
+      !procedure.expirationDate
+    ) {
+      return null;
+    }
+    const today = new Date();
+    const exp = new Date(procedure.expirationDate);
+    const warn = new Date(exp);
+    warn.setDate(warn.getDate() - 90);
+
+    if (today >= exp) return 'VENCIDO';
+    if (today >= warn) return 'POR_VENCER';
+    return 'VIGENTE';
+  }
+
+  /**
+   * Derives isOverdue from deadlineDate at response time for accuracy.
+   * Falls back to the stored field if deadlineDate is null.
+   */
+  private computeIsOverdue(procedure: any): boolean {
+    if (!procedure.deadlineDate) return procedure.isOverdue ?? false;
+    const isTerminal =
+      procedure.currentStatus === ProcedureStatus.CERRADO ||
+      procedure.currentStatus === ProcedureStatus.ABANDONADO;
+    if (isTerminal) return false;
+    return new Date() > new Date(procedure.deadlineDate);
+  }
+
   private buildResponse(procedure: any) {
-    return { ...procedure };
+    return {
+      ...procedure,
+      raiStatus: this.computeRaiStatus(procedure),
+      isOverdue: this.computeIsOverdue(procedure),
+    };
   }
 
   private validateCategoryCompatibility(typeCode: ProcedureTypeCode, category: CompanyCategory) {
@@ -58,6 +101,30 @@ export class ProceduresService {
 
   private hasRole(userRoles: string[], roles: UserRole[]): boolean {
     return userRoles.some((r) => roles.includes(r as UserRole));
+  }
+
+  /**
+   * Looks up the deadline in days for a given procedure type and cycle count.
+   * cycleCount is the value BEFORE incrementing (matches DeadlineConfig.cycleNumber).
+   * Falls back to the highest configured re-entry deadline if no exact match.
+   */
+  private async getDeadlineDays(
+    typeCode: ProcedureTypeCode,
+    cycleCount: number,
+  ): Promise<number | null> {
+    let config = await this.prisma.deadlineConfig.findFirst({
+      where: { procedureType: typeCode, cycleNumber: cycleCount, isActive: true },
+    });
+
+    // If no exact match for a re-entry cycle, fall back to the highest configured re-entry
+    if (!config && cycleCount > 0) {
+      config = await this.prisma.deadlineConfig.findFirst({
+        where: { procedureType: typeCode, cycleNumber: { gt: 0 }, isActive: true },
+        orderBy: { cycleNumber: 'desc' },
+      });
+    }
+
+    return config?.deadlineDays ?? null;
   }
 
   // ---------------------------------------------------------------------------
@@ -133,7 +200,7 @@ export class ProceduresService {
       }
     }
 
-    // 7. Create within transaction + initial ProcedureAudit
+    // 7. Create within transaction + initial ProcedureAudit (RECIBIDO)
     const procedure = await this.prisma.$transaction(async (tx) => {
       const created = await tx.procedure.create({
         data: {
@@ -393,11 +460,33 @@ export class ProceduresService {
       updateData.expirationDate = dto.expirationDate ? new Date(dto.expirationDate) : undefined;
       updateData.closedAt = new Date();
     }
-    // When re-entering from SUBSANACION, increment cycleCount
-    if (
+
+    // Determine if this transition creates a new review cycle
+    const isFirstEnRevision =
+      fromStatus === ProcedureStatus.RECIBIDO && toStatus === ProcedureStatus.EN_REVISION;
+    const isReentry =
       fromStatus === ProcedureStatus.SUBSANACION_PENDIENTE_REINGRESO &&
-      toStatus === ProcedureStatus.EN_REVISION
-    ) {
+      toStatus === ProcedureStatus.EN_REVISION;
+
+    // Calculate deadlineDate for all EN_REVISION entries
+    let deadlineDate: Date | null = null;
+    if (toStatus === ProcedureStatus.EN_REVISION && dto.reviewStartDate) {
+      const deadlineDays = await this.getDeadlineDays(
+        procedure.procedureType.code,
+        procedure.cycleCount, // value before increment
+      );
+      if (deadlineDays !== null) {
+        deadlineDate = await this.workingDaysService.addWorkingDays(
+          new Date(dto.reviewStartDate),
+          deadlineDays,
+        );
+        updateData.deadlineDate = deadlineDate;
+        updateData.isOverdue = false; // reset on new cycle
+      }
+    }
+
+    // Cycle management
+    if (isFirstEnRevision || isReentry) {
       updateData.cycleCount = { increment: 1 };
     }
 
@@ -418,16 +507,18 @@ export class ProceduresService {
         },
       });
 
-      // Create a new ProcedureCycle on re-entry
-      if (
-        fromStatus === ProcedureStatus.SUBSANACION_PENDIENTE_REINGRESO &&
-        toStatus === ProcedureStatus.EN_REVISION
-      ) {
+      // Create ProcedureCycle for first or re-entry EN_REVISION
+      if (isFirstEnRevision || isReentry) {
         await tx.procedureCycle.create({
           data: {
             procedureId: id,
             cycleNumber: procedure.cycleCount + 1,
-            reentryDate: dto.reviewStartDate ? new Date(dto.reviewStartDate) : new Date(),
+            reentryDate: isReentry
+              ? dto.reviewStartDate
+                ? new Date(dto.reviewStartDate)
+                : new Date()
+              : null,
+            reviewDeadline: deadlineDate,
           },
         });
       }
@@ -520,5 +611,177 @@ export class ProceduresService {
     });
 
     return { message: PROCEDURE_MESSAGES.SUCCESS.DELETED, id };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Cycles — POST /procedures/:id/cycles
+  // ---------------------------------------------------------------------------
+
+  async createCycle(procedureId: string, dto: CreateCycleDto, userId: string) {
+    const procedure = await this.prisma.procedure.findUnique({
+      where: { id: procedureId },
+      include: { procedureType: { select: { code: true } } },
+    });
+    if (!procedure || !procedure.isActive) {
+      throw new NotFoundException(PROCEDURE_MESSAGES.ERROR.NOT_FOUND);
+    }
+
+    // autoTransition requires procedure to be in SUBSANACION_PENDIENTE_REINGRESO
+    if (dto.autoTransition && procedure.currentStatus !== ProcedureStatus.SUBSANACION_PENDIENTE_REINGRESO) {
+      throw new UnprocessableEntityException(PROCEDURE_MESSAGES.ERROR.CYCLE_REQUIRES_SUBSANACION);
+    }
+
+    const newCycleNumber = procedure.cycleCount + 1;
+    const reentryDate = new Date(dto.reentryDate);
+    // reviewStartDate defaults to reentryDate if not provided
+    const reviewStart = dto.reviewStartDate ? new Date(dto.reviewStartDate) : reentryDate;
+
+    // Calculate reviewDeadline using DeadlineConfig
+    const deadlineDays = await this.getDeadlineDays(
+      procedure.procedureType.code,
+      procedure.cycleCount, // before increment
+    );
+    let reviewDeadline: Date | null = null;
+    if (deadlineDays !== null) {
+      reviewDeadline = await this.workingDaysService.addWorkingDays(reviewStart, deadlineDays);
+    }
+
+    const cycle = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.procedureCycle.create({
+        data: {
+          procedureId,
+          cycleNumber: newCycleNumber,
+          reentryDate,
+          reviewDeadline,
+          note: dto.note ?? null,
+        },
+      });
+
+      const updateData: Prisma.ProcedureUpdateInput = {
+        cycleCount: { increment: 1 },
+      };
+      if (reviewDeadline) updateData.deadlineDate = reviewDeadline;
+      if (reviewDeadline) updateData.isOverdue = false;
+
+      if (dto.autoTransition) {
+        updateData.currentStatus = ProcedureStatus.EN_REVISION;
+        updateData.reviewStartDate = reviewStart;
+
+        await tx.procedureAudit.create({
+          data: {
+            procedureId,
+            fromStatus: procedure.currentStatus,
+            toStatus: ProcedureStatus.EN_REVISION,
+            changedByUserId: userId,
+          },
+        });
+      }
+
+      await tx.procedure.update({ where: { id: procedureId }, data: updateData });
+
+      return created;
+    });
+
+    await this.auditService.log({
+      action: PROCEDURE_AUDIT_ACTIONS.CYCLE_CREATED,
+      userId,
+      details: { procedureId, cycleNumber: newCycleNumber, autoTransition: dto.autoTransition },
+    });
+
+    if (dto.autoTransition) {
+      await this.auditService.log({
+        action: PROCEDURE_AUDIT_ACTIONS.STATUS_CHANGED,
+        userId,
+        details: {
+          procedureId,
+          fromStatus: procedure.currentStatus,
+          toStatus: ProcedureStatus.EN_REVISION,
+          cycleNumber: newCycleNumber,
+        },
+      });
+    }
+
+    return cycle;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Cycles — GET /procedures/:id/cycles
+  // ---------------------------------------------------------------------------
+
+  async findAllCycles(procedureId: string) {
+    const procedure = await this.prisma.procedure.findUnique({ where: { id: procedureId } });
+    if (!procedure || !procedure.isActive) {
+      throw new NotFoundException(PROCEDURE_MESSAGES.ERROR.NOT_FOUND);
+    }
+
+    return this.prisma.procedureCycle.findMany({
+      where: { procedureId, isActive: true },
+      orderBy: { cycleNumber: 'asc' },
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Cycles — GET /procedures/:id/cycles/:cycleId
+  // ---------------------------------------------------------------------------
+
+  async findOneCycle(procedureId: string, cycleId: string) {
+    const cycle = await this.prisma.procedureCycle.findFirst({
+      where: { id: cycleId, procedureId, isActive: true },
+    });
+    if (!cycle) {
+      throw new NotFoundException(PROCEDURE_MESSAGES.ERROR.CYCLE_NOT_FOUND);
+    }
+    return cycle;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Cycles — PATCH /procedures/:id/cycles/:cycleId/close
+  // ---------------------------------------------------------------------------
+
+  async closeCycle(procedureId: string, cycleId: string, dto: CloseCycleDto, userId: string) {
+    const cycle = await this.prisma.procedureCycle.findFirst({
+      where: { id: cycleId, procedureId, isActive: true },
+    });
+    if (!cycle) {
+      throw new NotFoundException(PROCEDURE_MESSAGES.ERROR.CYCLE_NOT_FOUND);
+    }
+    if (cycle.closedAt !== null) {
+      throw new ConflictException(PROCEDURE_MESSAGES.ERROR.CYCLE_ALREADY_CLOSED);
+    }
+
+    const updated = await this.prisma.procedureCycle.update({
+      where: { id: cycleId },
+      data: {
+        closedAt: new Date(),
+        note: dto.note !== undefined ? dto.note : cycle.note,
+      },
+    });
+
+    await this.auditService.log({
+      action: PROCEDURE_AUDIT_ACTIONS.CYCLE_CLOSED,
+      userId,
+      details: { procedureId, cycleId },
+    });
+
+    return updated;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Audit — GET /procedures/:id/audit
+  // ---------------------------------------------------------------------------
+
+  async getAuditHistory(procedureId: string) {
+    const procedure = await this.prisma.procedure.findUnique({ where: { id: procedureId } });
+    if (!procedure) {
+      throw new NotFoundException(PROCEDURE_MESSAGES.ERROR.NOT_FOUND);
+    }
+
+    return this.prisma.procedureAudit.findMany({
+      where: { procedureId },
+      orderBy: { changedAt: 'asc' },
+      include: {
+        changedBy: { select: { id: true, fullName: true } },
+      },
+    });
   }
 }

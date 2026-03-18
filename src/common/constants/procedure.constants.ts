@@ -92,9 +92,13 @@ export const PROCEDURE_MESSAGES = {
     INSPECTOR_INVALID_ROLE: 'User does not have INSPECTOR, ENCARGADO or SUPERADMIN role',
     CANNOT_DELETE_ACTIVE: 'Cannot delete a procedure in an active state (must be CERRADO or ABANDONADO)',
     ALREADY_DELETED: 'Procedure already deleted',
+    CYCLE_NOT_FOUND: 'Procedure cycle not found',
+    CYCLE_ALREADY_CLOSED: 'Cycle is already closed',
+    CYCLE_REQUIRES_SUBSANACION: 'autoTransition requires procedure to be in SUBSANACION_PENDIENTE_REINGRESO',
   },
   SUCCESS: {
     DELETED: 'Procedure deleted successfully',
+    CYCLE_CLOSED: 'Cycle closed successfully',
   },
 } as const;
 
@@ -107,4 +111,6 @@ export const PROCEDURE_AUDIT_ACTIONS = {
   STATUS_CHANGED: 'PROCEDURE_STATUS_CHANGED',
   ASSIGNED: 'PROCEDURE_INSPECTOR_ASSIGNED',
   DELETED: 'PROCEDURE_DELETED',
+  CYCLE_CREATED: 'PROCEDURE_CYCLE_CREATED',
+  CYCLE_CLOSED: 'PROCEDURE_CYCLE_CLOSED',
 } as const;
