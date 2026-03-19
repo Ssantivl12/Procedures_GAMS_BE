@@ -3,6 +3,9 @@ export const AUTH = {
     MIN_LENGTH: 8,
     MAX_LENGTH: 50,
     BCRYPT_ROUNDS: 12,
+    COMPLEXITY_REGEX: /^(?=.*[A-Z])(?=.*\d)/,
+    COMPLEXITY_MESSAGE:
+      'Password must contain at least one uppercase letter and one number',
   },
   REFRESH_TOKEN: {
     EXPIRES_IN: '7d',

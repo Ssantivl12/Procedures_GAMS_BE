@@ -9,7 +9,7 @@ import { AuditService } from '../audit/audit.service';
 import { CreateCaseFileDto } from './dto/create-case-file.dto';
 import { UpdateCaseFileDto } from './dto/update-case-file.dto';
 import { QueryCaseFilesDto } from './dto/query-case-files.dto';
-import { Prisma, ProcedureStatus } from '@prisma/client';
+import { Prisma, ProcedureStatus, ProcedureTypeCode } from '@prisma/client';
 import {
   CASE_FILE_MESSAGES,
   CASE_FILE_AUDIT_ACTIONS,
@@ -39,6 +39,16 @@ export class CasesService {
     return `EXP-${year}-${next.toString().padStart(5, '0')}`;
   }
 
+  private computeRaiStatus(expirationDate: Date): 'VIGENTE' | 'POR_VENCER' | 'VENCIDO' {
+    const today = new Date();
+    const exp = new Date(expirationDate);
+    const warn = new Date(exp);
+    warn.setDate(warn.getDate() - 90);
+    if (today >= exp) return 'VENCIDO';
+    if (today >= warn) return 'POR_VENCER';
+    return 'VIGENTE';
+  }
+
   private buildResponse(caseFile: any) {
     const { procedures = [], company, ...rest } = caseFile;
 
@@ -50,6 +60,18 @@ export class CasesService {
       [ProcedureStatus.CERRADO, ProcedureStatus.ABANDONADO].includes(p.currentStatus),
     ).length;
 
+    // Semáforo del RAI más reciente cerrado en este expediente
+    const latestRai = procedures
+      .filter(
+        (p: any) =>
+          p.procedureType?.code === ProcedureTypeCode.RAI &&
+          p.currentStatus === ProcedureStatus.CERRADO &&
+          p.expirationDate,
+      )
+      .sort((a: any, b: any) => new Date(b.closedAt).getTime() - new Date(a.closedAt).getTime())[0];
+
+    const raiStatus = latestRai ? this.computeRaiStatus(latestRai.expirationDate) : null;
+
     return {
       ...rest,
       company: company
@@ -60,6 +82,7 @@ export class CasesService {
             category: company.category,
           }
         : null,
+      raiStatus,
       proceduresSummary: {
         total: procedures.length,
         active,
@@ -80,7 +103,12 @@ export class CasesService {
       },
       procedures: {
         where: { isActive: true },
-        select: { currentStatus: true },
+        select: {
+          currentStatus: true,
+          expirationDate: true,
+          closedAt: true,
+          procedureType: { select: { code: true } },
+        },
       },
     };
   }
@@ -328,7 +356,8 @@ export class CasesService {
     const caseFile = await this.prisma.caseFile.findUnique({
       where: { id },
       include: {
-        procedures: { where: { isActive: true }, select: { id: true } },
+        // include all procedures — active or soft-deleted — per contract §5.4
+        procedures: { select: { id: true } },
       },
     });
 

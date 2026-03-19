@@ -40,10 +40,15 @@ export class StorageService {
   }
 
   // -----------------------------------------------------------------------
-  // Full absolute path from storage key
+  // Full absolute path from storage key — guarded against path traversal
   // -----------------------------------------------------------------------
   getFullPath(storageKey: string): string {
-    return path.join(this.basePath, storageKey);
+    const resolved = path.resolve(this.basePath, storageKey);
+    const base = path.resolve(this.basePath);
+    if (!resolved.startsWith(base + path.sep) && resolved !== base) {
+      throw new InternalServerErrorException('Invalid storage path');
+    }
+    return resolved;
   }
 
   // -----------------------------------------------------------------------

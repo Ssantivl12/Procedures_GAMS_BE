@@ -19,7 +19,9 @@ import {
   DOCUMENT_MESSAGES,
 } from '../common/constants/document.constants';
 
-const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
+const MAX_FILE_SIZE_BYTES =
+  (parseInt(process.env.UPLOAD_MAX_SIZE_MB ?? '20', 10) || 20) * 1024 * 1024;
+const ALLOWED_MIME_TYPES = (process.env.UPLOAD_ALLOWED_TYPES ?? 'application/pdf').split(',');
 
 @Injectable()
 export class DocumentsService {
@@ -47,7 +49,7 @@ export class DocumentsService {
   ) {
     // 1. Validate file
     if (!file) throw new BadRequestException(DOCUMENT_MESSAGES.ERROR.NO_FILE);
-    if (file.mimetype !== 'application/pdf') {
+    if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
       throw new BadRequestException(DOCUMENT_MESSAGES.ERROR.INVALID_MIME);
     }
     if (file.size > MAX_FILE_SIZE_BYTES) {
@@ -308,7 +310,6 @@ export class DocumentsService {
       description: doc.description ?? null,
       version: doc.version,
       isLatest: doc.isLatest,
-      checksum: doc.checksum ?? null,
       uploadedBy: doc.uploadedBy
         ? {
             id: doc.uploadedBy.id,
