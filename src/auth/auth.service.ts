@@ -10,6 +10,7 @@ import { UsersService } from '../users/users.service';
 import { AuditService } from '../audit/audit.service';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
+import { createHash } from 'crypto';
 
 import {
   LoginRequestDto,
@@ -30,12 +31,20 @@ export class AuthService {
     private readonly auditService: AuditService,
   ) { }
 
+  private hashToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
   // -----------------------------------------------------------------
   // Validación interna de credenciales
   // -----------------------------------------------------------------
   private async validateUser(email: string, password: string): Promise<UserPayloadDto | null> {
     const user = await this.usersService.findByEmail(email);
-    if (!user || !user.isActive) return null;
+    if (!user || !user.isActive) {
+      // Always run bcrypt to prevent timing attacks that reveal registered emails
+      await bcrypt.compare(password, AUTH.PASSWORD.TIMING_DUMMY_HASH);
+      return null;
+    }
 
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) return null;
@@ -64,7 +73,7 @@ export class AuthService {
   ): Promise<LoginResponseDto> {
     const user = await this.validateUser(dto.email, dto.password);
     if (!user) {
-      await this.auditService.log({
+      await this.auditService.logCritical({
         action: AUTH.AUDIT_ACTIONS.LOGIN_FAILED,
         details: { email: dto.email, ip, userAgent },
       });
@@ -90,7 +99,7 @@ export class AuthService {
     await this.prisma.$transaction([
       this.prisma.refreshToken.create({
         data: {
-          token: refreshToken,
+          token: this.hashToken(refreshToken),
           userId: user.sub,
           expiresAt: new Date(Date.now() + AUTH.REFRESH_TOKEN.EXPIRES_MS),
           ip,
@@ -103,7 +112,7 @@ export class AuthService {
       }),
     ]);
 
-    await this.auditService.log({
+    await this.auditService.logCritical({
       action: AUTH.AUDIT_ACTIONS.LOGIN_SUCCESS,
       userId: user.sub,
       details: { ip, userAgent },
@@ -130,7 +139,7 @@ export class AuthService {
     }
 
     const refreshToken = await this.prisma.refreshToken.findUnique({
-      where: { token: dto.refreshToken },
+      where: { token: this.hashToken(dto.refreshToken) },
       include: {
         user: {
           include: {
@@ -189,7 +198,7 @@ export class AuthService {
       }),
       this.prisma.refreshToken.create({
         data: {
-          token: newRefreshToken,
+          token: this.hashToken(newRefreshToken),
           userId: user.id,
           expiresAt: new Date(Date.now() + AUTH.REFRESH_TOKEN.EXPIRES_MS),
           ip: refreshToken.ip,
@@ -198,7 +207,7 @@ export class AuthService {
       }),
     ]);
 
-    await this.auditService.log({
+    await this.auditService.logCritical({
       action: AUTH.AUDIT_ACTIONS.REFRESH_TOKEN,
       userId: user.id,
       details: {},
@@ -218,7 +227,7 @@ export class AuthService {
     if (refreshToken) {
       // Revoke only the provided session
       await this.prisma.refreshToken.updateMany({
-        where: { token: refreshToken, userId },
+        where: { token: this.hashToken(refreshToken), userId },
         data: { revoked: true, revokedAt: new Date() },
       });
     } else {
@@ -229,7 +238,7 @@ export class AuthService {
       });
     }
 
-    await this.auditService.log({
+    await this.auditService.logCritical({
       action: AUTH.AUDIT_ACTIONS.LOGOUT,
       userId,
       details: {},
@@ -266,7 +275,7 @@ export class AuthService {
       data: { revoked: true, revokedAt: new Date() },
     });
 
-    await this.auditService.log({
+    await this.auditService.logCritical({
       action: AUTH.AUDIT_ACTIONS.PASSWORD_CHANGE,
       userId,
       details: {},

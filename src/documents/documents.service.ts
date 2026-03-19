@@ -55,6 +55,17 @@ export class DocumentsService {
     if (file.size > MAX_FILE_SIZE_BYTES) {
       throw new BadRequestException('File exceeds the 20 MB limit');
     }
+    // Magic bytes check: first 4 bytes must be %PDF (0x25 0x50 0x44 0x46)
+    if (
+      !file.buffer ||
+      file.buffer.length < 4 ||
+      file.buffer[0] !== 0x25 ||
+      file.buffer[1] !== 0x50 ||
+      file.buffer[2] !== 0x44 ||
+      file.buffer[3] !== 0x46
+    ) {
+      throw new BadRequestException(DOCUMENT_MESSAGES.ERROR.INVALID_MIME);
+    }
 
     // 2. Validate procedure exists
     const procedure = await this.prisma.procedure.findFirst({

@@ -28,13 +28,12 @@ import { AUTH } from './common/constants/auth.constants';
         JWT_EXPIRES_IN: Joi.string().default('1h'),
         REFRESH_TOKEN_EXPIRES_IN: Joi.string().default('7d'),
         DATABASE_URL: Joi.string().required(),
+        FRONTEND_URL: Joi.string().uri().default('http://localhost:5173'),
       }),
     }),
     ThrottlerModule.forRoot([
-      {
-        ttl: AUTH.RATE_LIMIT.LOGIN.ttl,
-        limit: AUTH.RATE_LIMIT.LOGIN.limit,
-      },
+      { name: 'login', ttl: AUTH.RATE_LIMIT.LOGIN.ttl, limit: AUTH.RATE_LIMIT.LOGIN.limit },
+      { name: 'password', ttl: AUTH.RATE_LIMIT.PASSWORD.ttl, limit: AUTH.RATE_LIMIT.PASSWORD.limit },
     ]),
     ScheduleModule.forRoot(),
     UsersModule,

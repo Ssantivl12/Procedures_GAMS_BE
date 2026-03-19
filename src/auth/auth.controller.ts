@@ -9,6 +9,7 @@ import {
   Ip,
   Headers,
 } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import {
   LoginRequestDto,
@@ -20,6 +21,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { RolesGuard } from './roles.guard';
 import { Roles } from './roles.decorator';
 import { UserRole } from '../common/constants/role.constants';
+import { AUTH } from '../common/constants';
 
 @Controller('auth')
 export class AuthController {
@@ -27,6 +29,8 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ login: { limit: AUTH.RATE_LIMIT.LOGIN.limit, ttl: AUTH.RATE_LIMIT.LOGIN.ttl } })
   async login(
     @Body() dto: LoginRequestDto,
     @Ip() ip: string,
@@ -52,7 +56,8 @@ export class AuthController {
   }
 
   @Post('change-password')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(ThrottlerGuard, JwtAuthGuard, RolesGuard)
+  @Throttle({ password: { limit: AUTH.RATE_LIMIT.PASSWORD.limit, ttl: AUTH.RATE_LIMIT.PASSWORD.ttl } })
   @Roles(UserRole.SUPERADMIN, UserRole.ENCARGADO, UserRole.SECRETARIA, UserRole.INSPECTOR)
   @HttpCode(HttpStatus.NO_CONTENT)
   async changePassword(

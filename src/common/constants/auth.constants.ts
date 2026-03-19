@@ -6,6 +6,10 @@ export const AUTH = {
     COMPLEXITY_REGEX: /^(?=.*[A-Z])(?=.*\d)/,
     COMPLEXITY_MESSAGE:
       'Password must contain at least one uppercase letter and one number',
+    // Pre-computed bcrypt hash used to perform a dummy compare when the user
+    // does not exist, so response time is indistinguishable from a wrong-password
+    // attempt and does not reveal whether an email address is registered.
+    TIMING_DUMMY_HASH: '$2b$12$yWoyn/5ZlwwTbA5V233eLOwnTk1xPly69V6606.h8qwY.eimvWCN6',
   },
   REFRESH_TOKEN: {
     EXPIRES_IN: '7d',

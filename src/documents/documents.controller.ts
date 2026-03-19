@@ -39,7 +39,11 @@ export class DocumentsController {
   @Post()
   @Roles(UserRole.SUPERADMIN, UserRole.ENCARGADO, UserRole.SECRETARIA, UserRole.INSPECTOR)
   @HttpCode(HttpStatus.CREATED)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: (parseInt(process.env.UPLOAD_MAX_SIZE_MB ?? '20', 10) || 20) * 1024 * 1024 },
+    }),
+  )
   upload(
     @Param('procedureId') procedureId: string,
     @UploadedFile() file: any,
