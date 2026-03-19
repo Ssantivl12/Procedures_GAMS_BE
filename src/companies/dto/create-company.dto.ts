@@ -27,11 +27,6 @@ export class CreateCompanyDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^\d{9}$/, { message: 'RAI number debe tener exactamente 9 dígitos' })
-  raiNumber?: string;
-
-  @IsOptional()
-  @IsString()
   @MaxLength(255)
   address?: string;
 

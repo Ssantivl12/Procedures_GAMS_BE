@@ -371,7 +371,9 @@ export class ProceduresService {
   async changeStatus(id: string, dto: ChangeStatusDto, userId: string, userRoles: string[]) {
     const procedure = await this.prisma.procedure.findUnique({
       where: { id },
-      include: { procedureType: { select: { code: true } } },
+      include: {
+        procedureType: { select: { code: true, allowsObservations: true, allowsReentry: true } },
+      },
     });
     if (!procedure || !procedure.isActive) {
       throw new NotFoundException(PROCEDURE_MESSAGES.ERROR.NOT_FOUND);
@@ -411,13 +413,18 @@ export class ProceduresService {
         throw new UnprocessableEntityException(PROCEDURE_MESSAGES.ERROR.INVALID_TRANSITION);
       }
 
-      // CIERRE simplified flow: cannot enter OBSERVADO or SUBSANACION
+      // Check procedure type flags dynamically (contract Configuration §4.5)
       if (
-        procedure.procedureType.code === ProcedureTypeCode.CIERRE &&
-        (toStatus === ProcedureStatus.OBSERVADO_PENDIENTE_RECOJO ||
-          toStatus === ProcedureStatus.SUBSANACION_PENDIENTE_REINGRESO)
+        toStatus === ProcedureStatus.OBSERVADO_PENDIENTE_RECOJO &&
+        !procedure.procedureType.allowsObservations
       ) {
-        throw new UnprocessableEntityException(PROCEDURE_MESSAGES.ERROR.CIERRE_SIMPLIFIED_FLOW);
+        throw new UnprocessableEntityException(PROCEDURE_MESSAGES.ERROR.OBSERVATIONS_NOT_ALLOWED);
+      }
+      if (
+        toStatus === ProcedureStatus.SUBSANACION_PENDIENTE_REINGRESO &&
+        !procedure.procedureType.allowsReentry
+      ) {
+        throw new UnprocessableEntityException(PROCEDURE_MESSAGES.ERROR.REENTRY_NOT_ALLOWED);
       }
 
       // Role check
@@ -524,6 +531,12 @@ export class ProceduresService {
     // Cycle management
     if (isFirstEnRevision || isReentry) {
       updateData.cycleCount = { increment: 1 };
+    }
+    if (isReentry) {
+      if (procedure.reentryCount >= procedure.maxReentriesAllowed) {
+        throw new ConflictException(PROCEDURE_MESSAGES.ERROR.MAX_REENTRIES_EXCEEDED);
+      }
+      updateData.reentryCount = { increment: 1 };
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -664,7 +677,9 @@ export class ProceduresService {
   async createCycle(procedureId: string, dto: CreateCycleDto, userId: string) {
     const procedure = await this.prisma.procedure.findUnique({
       where: { id: procedureId },
-      include: { procedureType: { select: { code: true } } },
+      include: {
+        procedureType: { select: { code: true, allowsReentry: true } },
+      },
     });
     if (!procedure || !procedure.isActive) {
       throw new NotFoundException(PROCEDURE_MESSAGES.ERROR.NOT_FOUND);
@@ -675,12 +690,22 @@ export class ProceduresService {
       throw new UnprocessableEntityException(PROCEDURE_MESSAGES.ERROR.CYCLE_REQUIRES_SUBSANACION);
     }
 
+    // Check procedure type flag
+    if (!procedure.procedureType.allowsReentry) {
+      throw new ConflictException(PROCEDURE_MESSAGES.ERROR.REENTRY_NOT_ALLOWED);
+    }
+
     // Guard: reject if there is already an open (unclosed) cycle
     const openCycle = await this.prisma.procedureCycle.findFirst({
       where: { procedureId, closedAt: null, isActive: true },
     });
     if (openCycle) {
       throw new ConflictException(PROCEDURE_MESSAGES.ERROR.OPEN_CYCLE_EXISTS);
+    }
+
+    // Guard: enforce maxReentriesAllowed
+    if (procedure.reentryCount >= procedure.maxReentriesAllowed) {
+      throw new ConflictException(PROCEDURE_MESSAGES.ERROR.MAX_REENTRIES_EXCEEDED);
     }
 
     const newCycleNumber = procedure.cycleCount + 1;
@@ -711,6 +736,7 @@ export class ProceduresService {
 
       const updateData: Prisma.ProcedureUpdateInput = {
         cycleCount: { increment: 1 },
+        reentryCount: { increment: 1 },
       };
       if (reviewDeadline) updateData.deadlineDate = reviewDeadline;
       if (reviewDeadline) updateData.isOverdue = false;

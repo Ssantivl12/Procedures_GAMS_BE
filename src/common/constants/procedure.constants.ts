@@ -48,8 +48,8 @@ export const TRANSITION_ROLES: Record<string, UserRole[]> = {
     UserRole.ENCARGADO,
     UserRole.SUPERADMIN,
   ],
+  // SECRETARIA registers reentry via POST /cycles (autoTransition), NOT via direct PATCH /status
   [`${ProcedureStatus.SUBSANACION_PENDIENTE_REINGRESO}→${ProcedureStatus.EN_REVISION}`]: [
-    UserRole.SECRETARIA,
     UserRole.INSPECTOR,
     UserRole.ENCARGADO,
     UserRole.SUPERADMIN,
@@ -98,6 +98,8 @@ export const PROCEDURE_MESSAGES = {
     EXPIRATION_DATE_REQUIRED: 'expirationDate is required when closing a RAI procedure',
     REQUIRES_ACTIVE_OBSERVATION: 'At least one active observation is required to move to OBSERVADO_PENDIENTE_RECOJO',
     CIERRE_SIMPLIFIED_FLOW: 'CIERRE procedures follow a simplified flow and cannot enter OBSERVADO or SUBSANACION states',
+    OBSERVATIONS_NOT_ALLOWED: 'This procedure type does not allow observations',
+    REENTRY_NOT_ALLOWED: 'This procedure type does not allow reentry',
     INSPECTOR_NOT_FOUND: 'Inspector user not found or inactive',
     INSPECTOR_INVALID_ROLE: 'User does not have INSPECTOR, ENCARGADO or SUPERADMIN role',
     CANNOT_DELETE_ACTIVE: 'Cannot delete a procedure in an active state (must be CERRADO or ABANDONADO)',
@@ -106,6 +108,7 @@ export const PROCEDURE_MESSAGES = {
     CYCLE_ALREADY_CLOSED: 'Cycle is already closed',
     CYCLE_REQUIRES_SUBSANACION: 'autoTransition requires procedure to be in SUBSANACION_PENDIENTE_REINGRESO',
     OPEN_CYCLE_EXISTS: 'There is already an open cycle for this procedure. Close it before creating a new one.',
+    MAX_REENTRIES_EXCEEDED: 'Maximum number of allowed reentries has been reached for this procedure',
   },
   SUCCESS: {
     DELETED: 'Procedure deleted successfully',

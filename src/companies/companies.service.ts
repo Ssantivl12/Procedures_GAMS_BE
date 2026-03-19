@@ -28,20 +28,11 @@ export class CompaniesService {
       }
     }
 
-    if (dto.raiNumber) {
-      const existing = await this.prisma.company.findUnique({
-        where: { raiNumber: dto.raiNumber },
-      });
-      if (existing) {
-        throw new ConflictException(COMPANY_MESSAGES.ERROR.RAI_EXISTS);
-      }
-    }
-
     const data: Prisma.CompanyCreateInput = {
       legalName: dto.legalName,
       category: dto.category,
       nit: dto.nit,
-      raiNumber: dto.raiNumber,
+      // raiNumber intentionally omitted — only assignable via PATCH after RAI approval
       address: dto.address,
       phone: dto.phone,
       email: dto.email,

@@ -41,6 +41,8 @@ export class DashboardService {
           select: {
             id: true,
             currentStatus: true,
+            deadlineDate: true,
+            isOverdue: true,
             procedureType: { select: { code: true } },
             caseFile: {
               select: {
@@ -141,6 +143,9 @@ export class DashboardService {
         company: p.caseFile.company,
         procedureType: p.procedureType.code,
         obsIssuedAt: p.audits[0]?.changedAt ?? null,
+        deadlineDate: p.deadlineDate,
+        daysRemaining: p.deadlineDate ? this.calcDaysRemaining(p.deadlineDate) : null,
+        isOverdue: p.isOverdue,
       })),
       pendingReentry: pendingReentry.map((p) => ({
         id: p.id,
