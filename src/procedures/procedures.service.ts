@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../db/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { WorkingDaysService } from '../common/services/working-days.service';
+import { ConfigCacheService } from '../configuration/config-cache.service';
 import { CreateProcedureDto } from './dto/create-procedure.dto';
 import { UpdateProcedureDto } from './dto/update-procedure.dto';
 import { ChangeStatusDto } from './dto/change-status.dto';
@@ -25,6 +25,8 @@ import {
   ABANDON_ROLES,
   REACTIVATE_ROLES,
   ACTIVE_PROCEDURE_STATUSES_SET,
+  SUBSANATION_DEADLINE_DAYS,
+  SUBSANATION_DEADLINE_DAYS_DEFAULT,
 } from '../common/constants/procedure.constants';
 
 @Injectable()
@@ -32,7 +34,7 @@ export class ProceduresService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
-    private readonly workingDaysService: WorkingDaysService,
+    private readonly cache: ConfigCacheService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -462,6 +464,10 @@ export class ProceduresService {
           );
         }
       }
+
+      if (toStatus === ProcedureStatus.SUBSANACION_PENDIENTE_REINGRESO && !dto.obsPickedDate) {
+        throw new UnprocessableEntityException(PROCEDURE_MESSAGES.ERROR.OBS_PICKED_DATE_REQUIRED);
+      }
     }
 
     // Build update payload
@@ -472,6 +478,14 @@ export class ProceduresService {
     }
     if (dto.obsPickedDate) {
       updateData.obsPickedDate = new Date(dto.obsPickedDate);
+    }
+    if (toStatus === ProcedureStatus.SUBSANACION_PENDIENTE_REINGRESO) {
+      // obsPickedDate is validated above as required for this transition
+      const pickDate = new Date(dto.obsPickedDate!);
+      const subsanDays =
+        SUBSANATION_DEADLINE_DAYS[procedure.procedureType.code] ?? SUBSANATION_DEADLINE_DAYS_DEFAULT;
+      updateData.deadlineDate = this.cache.addWorkingDays(pickDate, subsanDays);
+      updateData.isOverdue = false;
     }
     if (dto.reviewStartDate) {
       updateData.reviewStartDate = new Date(dto.reviewStartDate);
@@ -498,7 +512,7 @@ export class ProceduresService {
         procedure.cycleCount, // value before increment
       );
       if (deadlineDays !== null) {
-        deadlineDate = await this.workingDaysService.addWorkingDays(
+        deadlineDate = this.cache.addWorkingDays(
           new Date(dto.reviewStartDate),
           deadlineDays,
         );
@@ -681,7 +695,7 @@ export class ProceduresService {
     );
     let reviewDeadline: Date | null = null;
     if (deadlineDays !== null) {
-      reviewDeadline = await this.workingDaysService.addWorkingDays(reviewStart, deadlineDays);
+      reviewDeadline = this.cache.addWorkingDays(reviewStart, deadlineDays);
     }
 
     const cycle = await this.prisma.$transaction(async (tx) => {

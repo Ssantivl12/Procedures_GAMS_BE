@@ -1,4 +1,4 @@
-import { ProcedureStatus } from '@prisma/client';
+import { ProcedureStatus, ProcedureTypeCode } from '@prisma/client';
 import { UserRole } from './role.constants';
 
 // ---------------------------------------------------------------------------
@@ -64,6 +64,16 @@ export const ABANDON_ROLES: UserRole[] = [
 ];
 
 export const REACTIVATE_ROLES: UserRole[] = [UserRole.ENCARGADO, UserRole.SUPERADMIN];
+
+// ---------------------------------------------------------------------------
+// Subsanation deadline days — not in DeadlineConfig, fixed per procedure type
+// Contract Procedures P2 §2.1: RAI=10 days, MAI_PMA=15 days from obsPickedDate
+// ---------------------------------------------------------------------------
+export const SUBSANATION_DEADLINE_DAYS: Partial<Record<ProcedureTypeCode, number>> = {
+  [ProcedureTypeCode.RAI]: 10,
+  [ProcedureTypeCode.MAI_PMA]: 15,
+};
+export const SUBSANATION_DEADLINE_DAYS_DEFAULT = 15;
 
 // ---------------------------------------------------------------------------
 // Messages
