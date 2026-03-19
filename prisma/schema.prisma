@@ -58,6 +58,12 @@ enum ObservationCategory {
   OTRA
 }
 
+enum ObservationPriority {
+  ALTA
+  MEDIA
+  BAJA
+}
+
 model Role {
   id        String   @id @default(uuid())
   name      RoleName @unique
@@ -266,8 +272,8 @@ model Observation {
   issuedAt       DateTime @default(now()) @db.Timestamptz(6)
   issuedByUserId String
 
-  category         String?
-  priority         String?
+  category         ObservationCategory?
+  priority         ObservationPriority?
   resolvedAt       DateTime? @db.Timestamptz(6)
   resolvedByUserId String?
   resolutionNote   String?

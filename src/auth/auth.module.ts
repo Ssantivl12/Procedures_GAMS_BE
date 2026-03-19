@@ -5,11 +5,11 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { AuthSchedulerService } from './auth-scheduler.service';
 import { JwtStrategy } from './jwt.strategy';
 import { RolesGuard } from './roles.guard';
 import { UsersModule } from '../users/users.module';
 import { AuditModule } from '../audit/audit.module';
-import { PrismaService } from '../db/prisma.service';
 
 @Module({
   imports: [
@@ -27,7 +27,7 @@ import { PrismaService } from '../db/prisma.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, RolesGuard, PrismaService],
+  providers: [AuthService, AuthSchedulerService, JwtStrategy, RolesGuard],
   exports: [JwtStrategy, RolesGuard, PassportModule],
 })
 export class AuthModule {}

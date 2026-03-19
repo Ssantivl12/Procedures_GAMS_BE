@@ -1,4 +1,5 @@
-import { IsOptional, IsString, MinLength, MaxLength, IsIn } from 'class-validator';
+import { IsOptional, IsString, MinLength, MaxLength, IsEnum } from 'class-validator';
+import { ObservationCategory, ObservationPriority } from '@prisma/client';
 
 export class UpdateObservationDto {
   @IsOptional()
@@ -12,12 +13,10 @@ export class UpdateObservationDto {
   details?: string;
 
   @IsOptional()
-  @IsString()
-  @IsIn(['DOCUMENTAL', 'TECNICA', 'ADMINISTRATIVA', 'LEGAL', 'OTRA'])
-  category?: string;
+  @IsEnum(ObservationCategory)
+  category?: ObservationCategory;
 
   @IsOptional()
-  @IsString()
-  @IsIn(['ALTA', 'MEDIA', 'BAJA'])
-  priority?: string;
+  @IsEnum(ObservationPriority)
+  priority?: ObservationPriority;
 }

@@ -2,7 +2,7 @@
     "info": {
         "_postman_id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
         "name": "Procedures_GAMS_BE",
-        "description": "API Documentation for Procedures GAMS Backend. \n\n**Prerequisites**:\n1. Run database seed to create Super Admin user: `admin@gams.gob.bo` / `SuperSecretPass123!`\n2. Use the 'Local Development' environment.",
+        "description": "API Documentation for Procedures GAMS Backend. \n\n**Prerequisites**:\n1. Run database seed to create Super Admin user: `superadmin@gmail.com` / `passwds12345`\n2. Use the 'Local Development' environment.",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "item": [
@@ -34,21 +34,12 @@
                         "body": {
                             "mode": "raw",
                             "raw": "{\n    \"email\": \"superadmin@gmail.com\",\n    \"password\": \"passwds12345\"\n}",
-                            "options": {
-                                "raw": {
-                                    "language": "json"
-                                }
-                            }
+                            "options": { "raw": { "language": "json" } }
                         },
                         "url": {
                             "raw": "{{baseUrl}}/auth/login",
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
-                            "path": [
-                                "auth",
-                                "login"
-                            ]
+                            "host": ["{{baseUrl}}"],
+                            "path": ["auth", "login"]
                         },
                         "description": "Authenticates a user and returns access and refresh tokens. Automatically sets environment variables."
                     },
@@ -77,21 +68,12 @@
                         "body": {
                             "mode": "raw",
                             "raw": "{\n    \"refreshToken\": \"{{refreshToken}}\"\n}",
-                            "options": {
-                                "raw": {
-                                    "language": "json"
-                                }
-                            }
+                            "options": { "raw": { "language": "json" } }
                         },
                         "url": {
                             "raw": "{{baseUrl}}/auth/refresh",
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
-                            "path": [
-                                "auth",
-                                "refresh"
-                            ]
+                            "host": ["{{baseUrl}}"],
+                            "path": ["auth", "refresh"]
                         },
                         "description": "Refreshes the access token using a valid refresh token."
                     },
@@ -100,36 +82,18 @@
                 {
                     "name": "Logout",
                     "request": {
-                        "auth": {
-                            "type": "bearer",
-                            "bearer": [
-                                {
-                                    "key": "token",
-                                    "value": "{{accessToken}}",
-                                    "type": "string"
-                                }
-                            ]
-                        },
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
                         "method": "POST",
                         "header": [],
                         "body": {
                             "mode": "raw",
                             "raw": "{\n    \"refreshToken\": \"{{refreshToken}}\"\n}",
-                            "options": {
-                                "raw": {
-                                    "language": "json"
-                                }
-                            }
+                            "options": { "raw": { "language": "json" } }
                         },
                         "url": {
                             "raw": "{{baseUrl}}/auth/logout",
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
-                            "path": [
-                                "auth",
-                                "logout"
-                            ]
+                            "host": ["{{baseUrl}}"],
+                            "path": ["auth", "logout"]
                         },
                         "description": "Logs out the user and revokes the refresh token."
                     },
@@ -138,36 +102,18 @@
                 {
                     "name": "Change Password",
                     "request": {
-                        "auth": {
-                            "type": "bearer",
-                            "bearer": [
-                                {
-                                    "key": "token",
-                                    "value": "{{accessToken}}",
-                                    "type": "string"
-                                }
-                            ]
-                        },
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
                         "method": "POST",
                         "header": [],
                         "body": {
                             "mode": "raw",
                             "raw": "{\n    \"currentPassword\": \"passwds12345\",\n    \"newPassword\": \"NewPasswds12345!\",\n    \"confirmPassword\": \"NewPasswds12345!\"\n}",
-                            "options": {
-                                "raw": {
-                                    "language": "json"
-                                }
-                            }
+                            "options": { "raw": { "language": "json" } }
                         },
                         "url": {
                             "raw": "{{baseUrl}}/auth/change-password",
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
-                            "path": [
-                                "auth",
-                                "change-password"
-                            ]
+                            "host": ["{{baseUrl}}"],
+                            "path": ["auth", "change-password"]
                         },
                         "description": "Changes the password for the currently authenticated user."
                     },
@@ -179,37 +125,20 @@
             "name": "Users",
             "item": [
                 {
-                    "name": "Create User (Inspector)",
+                    "name": "Create User",
                     "request": {
-                        "auth": {
-                            "type": "bearer",
-                            "bearer": [
-                                {
-                                    "key": "token",
-                                    "value": "{{accessToken}}",
-                                    "type": "string"
-                                }
-                            ]
-                        },
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
                         "method": "POST",
                         "header": [],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"email\": \"inspector1@gams.gob.bo\",\n    \"password\": \"InspectorPass123!\",\n    \"fullName\": \"Juan Inspector\",\n    \"roles\": [\"INSPECTOR\"]\n}",
-                            "options": {
-                                "raw": {
-                                    "language": "json"
-                                }
-                            }
+                            "raw": "{\n    \"email\": \"inspector1@gams.gob.bo\",\n    \"password\": \"InspectorPass123!\",\n    \"firstName\": \"Juan\",\n    \"lastName\": \"Inspector\",\n    \"roles\": [\"INSPECTOR\"]\n}",
+                            "options": { "raw": { "language": "json" } }
                         },
                         "url": {
                             "raw": "{{baseUrl}}/users",
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
-                            "path": [
-                                "users"
-                            ]
+                            "host": ["{{baseUrl}}"],
+                            "path": ["users"]
                         },
                         "description": "Creates a new user. Requires SUPERADMIN role."
                     },
@@ -218,26 +147,13 @@
                 {
                     "name": "Get All Users",
                     "request": {
-                        "auth": {
-                            "type": "bearer",
-                            "bearer": [
-                                {
-                                    "key": "token",
-                                    "value": "{{accessToken}}",
-                                    "type": "string"
-                                }
-                            ]
-                        },
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
                         "method": "GET",
                         "header": [],
                         "url": {
                             "raw": "{{baseUrl}}/users",
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
-                            "path": [
-                                "users"
-                            ]
+                            "host": ["{{baseUrl}}"],
+                            "path": ["users"]
                         },
                         "description": "Retrieves all active users. Requires SUPERADMIN role."
                     },
@@ -246,27 +162,13 @@
                 {
                     "name": "Get User By ID",
                     "request": {
-                        "auth": {
-                            "type": "bearer",
-                            "bearer": [
-                                {
-                                    "key": "token",
-                                    "value": "{{accessToken}}",
-                                    "type": "string"
-                                }
-                            ]
-                        },
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
                         "method": "GET",
                         "header": [],
                         "url": {
                             "raw": "{{baseUrl}}/users/{{userId}}",
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
-                            "path": [
-                                "users",
-                                "{{userId}}"
-                            ]
+                            "host": ["{{baseUrl}}"],
+                            "path": ["users", "{{userId}}"]
                         },
                         "description": "Retrieves a specific user by ID. Requires SUPERADMIN role."
                     },
@@ -275,36 +177,18 @@
                 {
                     "name": "Update User",
                     "request": {
-                        "auth": {
-                            "type": "bearer",
-                            "bearer": [
-                                {
-                                    "key": "token",
-                                    "value": "{{accessToken}}",
-                                    "type": "string"
-                                }
-                            ]
-                        },
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
                         "method": "PATCH",
                         "header": [],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"fullName\": \"Juan Inspector Updated\",\n    \"isActive\": true\n}",
-                            "options": {
-                                "raw": {
-                                    "language": "json"
-                                }
-                            }
+                            "raw": "{\n    \"firstName\": \"Juan\",\n    \"lastName\": \"Inspector Updated\",\n    \"isActive\": true\n}",
+                            "options": { "raw": { "language": "json" } }
                         },
                         "url": {
                             "raw": "{{baseUrl}}/users/{{userId}}",
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
-                            "path": [
-                                "users",
-                                "{{userId}}"
-                            ]
+                            "host": ["{{baseUrl}}"],
+                            "path": ["users", "{{userId}}"]
                         },
                         "description": "Updates a user's details. Requires SUPERADMIN role."
                     },
@@ -313,29 +197,1294 @@
                 {
                     "name": "Delete User (Soft)",
                     "request": {
-                        "auth": {
-                            "type": "bearer",
-                            "bearer": [
-                                {
-                                    "key": "token",
-                                    "value": "{{accessToken}}",
-                                    "type": "string"
-                                }
-                            ]
-                        },
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
                         "method": "DELETE",
                         "header": [],
                         "url": {
                             "raw": "{{baseUrl}}/users/{{userId}}",
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
-                            "path": [
-                                "users",
-                                "{{userId}}"
-                            ]
+                            "host": ["{{baseUrl}}"],
+                            "path": ["users", "{{userId}}"]
                         },
                         "description": "Soft deletes a user. Requires SUPERADMIN role."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Companies",
+            "item": [
+                {
+                    "name": "Create Company",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.id) { pm.environment.set(\"companyId\", jsonData.id); }"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"legalName\": \"Empresa Ejemplo S.R.L.\",\n    \"nit\": \"1234567890\",\n    \"category\": \"PRIVADA\",\n    \"address\": \"Av. Arce #123, La Paz\",\n    \"phone\": \"+59171234567\",\n    \"email\": \"empresa@ejemplo.bo\",\n    \"legalRepName\": \"Pedro Pérez\",\n    \"legalRepCi\": \"12345678\",\n    \"municipality\": \"La Paz\",\n    \"economicActivity\": \"Construcción\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/companies",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["companies"]
+                        },
+                        "description": "Creates a new company. Requires SUPERADMIN or ADMIN role."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get All Companies",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/companies?page=1&limit=20",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["companies"],
+                            "query": [
+                                { "key": "page", "value": "1" },
+                                { "key": "limit", "value": "20" },
+                                { "key": "search", "value": "", "disabled": true },
+                                { "key": "category", "value": "", "disabled": true }
+                            ]
+                        },
+                        "description": "Retrieves all companies with optional filtering and pagination."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Company By ID",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/companies/{{companyId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["companies", "{{companyId}}"]
+                        },
+                        "description": "Retrieves a specific company by ID."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Company Case File",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/companies/{{companyId}}/case-file",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["companies", "{{companyId}}", "case-file"]
+                        },
+                        "description": "Retrieves the active case file for a company."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Company",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "PATCH",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"address\": \"Av. 6 de Agosto #456, La Paz\",\n    \"phone\": \"+59171234568\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/companies/{{companyId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["companies", "{{companyId}}"]
+                        },
+                        "description": "Updates a company's details."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Company",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/companies/{{companyId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["companies", "{{companyId}}"]
+                        },
+                        "description": "Soft deletes a company."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Case Files",
+            "item": [
+                {
+                    "name": "Create Case File",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.id) { pm.environment.set(\"caseFileId\", jsonData.id); }"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"companyId\": \"{{companyId}}\",\n    \"fileNumber\": \"EXP-2026-001\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/case-files",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["case-files"]
+                        },
+                        "description": "Creates a new case file for a company."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get All Case Files",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/case-files?page=1&limit=20",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["case-files"],
+                            "query": [
+                                { "key": "page", "value": "1" },
+                                { "key": "limit", "value": "20" },
+                                { "key": "status", "value": "", "disabled": true }
+                            ]
+                        },
+                        "description": "Retrieves all case files with optional filtering."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Case Files by Company",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/case-files/company/{{companyId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["case-files", "company", "{{companyId}}"]
+                        },
+                        "description": "Retrieves all case files for a specific company."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Case File By ID",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/case-files/{{caseFileId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["case-files", "{{caseFileId}}"]
+                        },
+                        "description": "Retrieves a specific case file by ID."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Case File",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "PATCH",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"fileNumber\": \"EXP-2026-001-A\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/case-files/{{caseFileId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["case-files", "{{caseFileId}}"]
+                        },
+                        "description": "Updates a case file's details."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Close Case File",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "PATCH",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/case-files/{{caseFileId}}/close",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["case-files", "{{caseFileId}}", "close"]
+                        },
+                        "description": "Closes an active case file."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Reopen Case File",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "PATCH",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/case-files/{{caseFileId}}/reopen",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["case-files", "{{caseFileId}}", "reopen"]
+                        },
+                        "description": "Reopens a closed case file."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Case File",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/case-files/{{caseFileId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["case-files", "{{caseFileId}}"]
+                        },
+                        "description": "Soft deletes a case file."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Procedures",
+            "item": [
+                {
+                    "name": "Create Procedure",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.id) { pm.environment.set(\"procedureId\", jsonData.id); }"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"caseFileId\": \"{{caseFileId}}\",\n    \"procedureTypeId\": 1,\n    \"procedureKind\": \"RAI\",\n    \"receptionDate\": \"2026-03-18\",\n    \"routeSheetNumber\": \"HRR-001\",\n    \"internalFileNumber\": \"INT-2026-001\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures"]
+                        },
+                        "description": "Creates a new procedure."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get All Procedures",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures?page=1&limit=20",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures"],
+                            "query": [
+                                { "key": "page", "value": "1" },
+                                { "key": "limit", "value": "20" },
+                                { "key": "status", "value": "", "disabled": true },
+                                { "key": "caseFileId", "value": "", "disabled": true },
+                                { "key": "inspectorId", "value": "", "disabled": true },
+                                { "key": "procedureKind", "value": "", "disabled": true }
+                            ]
+                        },
+                        "description": "Retrieves all procedures with optional filters."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Procedures by Case File",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/case-files/{{caseFileId}}/procedures",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["case-files", "{{caseFileId}}", "procedures"]
+                        },
+                        "description": "Retrieves all procedures for a specific case file."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Procedure By ID",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures/{{procedureId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures", "{{procedureId}}"]
+                        },
+                        "description": "Retrieves a specific procedure by ID."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Procedure Audit Trail",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures/{{procedureId}}/audit",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures", "{{procedureId}}", "audit"]
+                        },
+                        "description": "Retrieves the audit trail for a specific procedure."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Procedure",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "PATCH",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"routeSheetNumber\": \"HRR-002\",\n    \"generalNotes\": \"Updated notes\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures/{{procedureId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures", "{{procedureId}}"]
+                        },
+                        "description": "Updates a procedure's general information."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Change Procedure Status",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "PATCH",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"toStatus\": \"EN_REVISION\",\n    \"reviewStartDate\": \"2026-03-18\",\n    \"note\": \"Starting review\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures/{{procedureId}}/status",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures", "{{procedureId}}", "status"]
+                        },
+                        "description": "Changes the status of a procedure. Valid statuses: INGRESADO, EN_REVISION, OBSERVADO, SUBSANACION_PENDIENTE_REINGRESO, CERRADO, ABANDONADO."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Assign Inspector",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "PATCH",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"inspectorUserId\": \"{{userId}}\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures/{{procedureId}}/assign",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures", "{{procedureId}}", "assign"]
+                        },
+                        "description": "Assigns an inspector to a procedure."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Procedure",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures/{{procedureId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures", "{{procedureId}}"]
+                        },
+                        "description": "Soft deletes a procedure."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Cycle",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.id) { pm.environment.set(\"cycleId\", jsonData.id); }"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"reentryDate\": \"2026-03-18\",\n    \"reviewStartDate\": \"2026-03-18\",\n    \"autoTransition\": true,\n    \"note\": \"Reentry after subsanation\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures/{{procedureId}}/cycles",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures", "{{procedureId}}", "cycles"]
+                        },
+                        "description": "Creates a new review cycle for a procedure."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Cycles",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures/{{procedureId}}/cycles",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures", "{{procedureId}}", "cycles"]
+                        },
+                        "description": "Retrieves all cycles for a procedure."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Cycle By ID",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures/{{procedureId}}/cycles/{{cycleId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures", "{{procedureId}}", "cycles", "{{cycleId}}"]
+                        },
+                        "description": "Retrieves a specific cycle by ID."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Close Cycle",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "PATCH",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"note\": \"Cycle closed after observations resolved\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures/{{procedureId}}/cycles/{{cycleId}}/close",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures", "{{procedureId}}", "cycles", "{{cycleId}}", "close"]
+                        },
+                        "description": "Closes an active review cycle."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Observations",
+            "item": [
+                {
+                    "name": "Create Observation",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.id) { pm.environment.set(\"observationId\", jsonData.id); }"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"cycleId\": \"{{cycleId}}\",\n    \"summary\": \"Falta documentación requerida\",\n    \"details\": \"El expediente no contiene el plano aprobado\",\n    \"category\": \"DOCUMENTAL\",\n    \"priority\": \"ALTA\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures/{{procedureId}}/observations",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures", "{{procedureId}}", "observations"]
+                        },
+                        "description": "Creates a new observation for a procedure."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get All Observations",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures/{{procedureId}}/observations",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures", "{{procedureId}}", "observations"],
+                            "query": [
+                                { "key": "status", "value": "", "disabled": true },
+                                { "key": "cycleId", "value": "", "disabled": true }
+                            ]
+                        },
+                        "description": "Retrieves all observations for a procedure."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Observation By ID",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures/{{procedureId}}/observations/{{observationId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures", "{{procedureId}}", "observations", "{{observationId}}"]
+                        },
+                        "description": "Retrieves a specific observation by ID."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Observation",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "PATCH",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"summary\": \"Falta documentación actualizada\",\n    \"priority\": \"MEDIA\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures/{{procedureId}}/observations/{{observationId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures", "{{procedureId}}", "observations", "{{observationId}}"]
+                        },
+                        "description": "Updates an observation."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Resolve Observation",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "PATCH",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"resolutionNote\": \"Documentación presentada y verificada\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures/{{procedureId}}/observations/{{observationId}}/resolve",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures", "{{procedureId}}", "observations", "{{observationId}}", "resolve"]
+                        },
+                        "description": "Marks an observation as resolved."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Reopen Observation",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "PATCH",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures/{{procedureId}}/observations/{{observationId}}/reopen",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures", "{{procedureId}}", "observations", "{{observationId}}", "reopen"]
+                        },
+                        "description": "Reopens a resolved observation."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Observation",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures/{{procedureId}}/observations/{{observationId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures", "{{procedureId}}", "observations", "{{observationId}}"]
+                        },
+                        "description": "Deletes an observation."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Documents",
+            "item": [
+                {
+                    "name": "Upload Document",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.id) { pm.environment.set(\"documentId\", jsonData.id); }"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                { "key": "file", "type": "file", "src": "" },
+                                { "key": "docGroup", "value": "EXPEDIENTE", "type": "text" },
+                                { "key": "cycleId", "value": "{{cycleId}}", "type": "text" },
+                                { "key": "description", "value": "Plano aprobado", "type": "text" }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures/{{procedureId}}/documents",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures", "{{procedureId}}", "documents"]
+                        },
+                        "description": "Uploads a PDF document (max 20MB by default). docGroup values: EXPEDIENTE, RAI, IAA, OTRO."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get All Documents",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures/{{procedureId}}/documents",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures", "{{procedureId}}", "documents"],
+                            "query": [
+                                { "key": "docGroup", "value": "", "disabled": true },
+                                { "key": "cycleId", "value": "", "disabled": true }
+                            ]
+                        },
+                        "description": "Retrieves all documents for a procedure."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Document By ID",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures/{{procedureId}}/documents/{{documentId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures", "{{procedureId}}", "documents", "{{documentId}}"]
+                        },
+                        "description": "Retrieves metadata for a specific document."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Document Versions",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures/{{procedureId}}/documents/{{documentId}}/versions",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures", "{{procedureId}}", "documents", "{{documentId}}", "versions"]
+                        },
+                        "description": "Retrieves all versions of a document."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Download Document",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures/{{procedureId}}/documents/{{documentId}}/download",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures", "{{procedureId}}", "documents", "{{documentId}}", "download"]
+                        },
+                        "description": "Downloads the PDF file for a specific document."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Document",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/procedures/{{procedureId}}/documents/{{documentId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["procedures", "{{procedureId}}", "documents", "{{documentId}}"]
+                        },
+                        "description": "Soft deletes a document."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Configuration",
+            "item": [
+                {
+                    "name": "Deadlines",
+                    "item": [
+                        {
+                            "name": "Get All Deadlines",
+                            "request": {
+                                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{baseUrl}}/config/deadlines",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["config", "deadlines"]
+                                },
+                                "description": "Retrieves all procedure deadlines."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Get Deadline By ID",
+                            "request": {
+                                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{baseUrl}}/config/deadlines/{{deadlineId}}",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["config", "deadlines", "{{deadlineId}}"]
+                                },
+                                "description": "Retrieves a specific deadline configuration."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Create Deadline",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "if (jsonData.id) { pm.environment.set(\"deadlineId\", jsonData.id); }"
+                                        ],
+                                        "type": "text/javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                                "method": "POST",
+                                "header": [],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"procedureType\": \"RAI\",\n    \"cycleNumber\": 1,\n    \"deadlineDays\": 15,\n    \"description\": \"Plazo para ciclo 1 de RAI\"\n}",
+                                    "options": { "raw": { "language": "json" } }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/config/deadlines",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["config", "deadlines"]
+                                },
+                                "description": "Creates a new deadline configuration. procedureType values: RAI, IAA, OTRO."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Update Deadline",
+                            "request": {
+                                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                                "method": "PATCH",
+                                "header": [],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"deadlineDays\": 20\n}",
+                                    "options": { "raw": { "language": "json" } }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/config/deadlines/{{deadlineId}}",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["config", "deadlines", "{{deadlineId}}"]
+                                },
+                                "description": "Updates an existing deadline configuration."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Delete Deadline",
+                            "request": {
+                                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                                "method": "DELETE",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{baseUrl}}/config/deadlines/{{deadlineId}}",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["config", "deadlines", "{{deadlineId}}"]
+                                },
+                                "description": "Deletes a deadline configuration."
+                            },
+                            "response": []
+                        }
+                    ]
+                },
+                {
+                    "name": "Non-Working Days",
+                    "item": [
+                        {
+                            "name": "Get Non-Working Days",
+                            "request": {
+                                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{baseUrl}}/config/non-working-days?year=2026",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["config", "non-working-days"],
+                                    "query": [
+                                        { "key": "year", "value": "2026" },
+                                        { "key": "type", "value": "", "disabled": true }
+                                    ]
+                                },
+                                "description": "Retrieves all non-working days, optionally filtered by year."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Create Non-Working Day",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "if (jsonData.id) { pm.environment.set(\"nonWorkingDayId\", jsonData.id); }"
+                                        ],
+                                        "type": "text/javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                                "method": "POST",
+                                "header": [],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"date\": \"2026-12-25\",\n    \"description\": \"Navidad\",\n    \"type\": \"NACIONAL\"\n}",
+                                    "options": { "raw": { "language": "json" } }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/config/non-working-days",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["config", "non-working-days"]
+                                },
+                                "description": "Creates a single non-working day. type values: NACIONAL, DEPARTAMENTAL, MUNICIPAL, OTRO."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Bulk Create Non-Working Days",
+                            "request": {
+                                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                                "method": "POST",
+                                "header": [],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"days\": [\n        { \"date\": \"2026-01-01\", \"description\": \"Año Nuevo\", \"type\": \"NACIONAL\" },\n        { \"date\": \"2026-02-16\", \"description\": \"Carnaval\", \"type\": \"NACIONAL\" },\n        { \"date\": \"2026-05-01\", \"description\": \"Día del Trabajo\", \"type\": \"NACIONAL\" }\n    ]\n}",
+                                    "options": { "raw": { "language": "json" } }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/config/non-working-days/bulk",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["config", "non-working-days", "bulk"]
+                                },
+                                "description": "Creates multiple non-working days in a single request."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Update Non-Working Day",
+                            "request": {
+                                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                                "method": "PATCH",
+                                "header": [],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"description\": \"Navidad Nacional\"\n}",
+                                    "options": { "raw": { "language": "json" } }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/config/non-working-days/{{nonWorkingDayId}}",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["config", "non-working-days", "{{nonWorkingDayId}}"]
+                                },
+                                "description": "Updates a non-working day entry."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Delete Non-Working Day",
+                            "request": {
+                                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                                "method": "DELETE",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{baseUrl}}/config/non-working-days/{{nonWorkingDayId}}",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["config", "non-working-days", "{{nonWorkingDayId}}"]
+                                },
+                                "description": "Deletes a non-working day entry."
+                            },
+                            "response": []
+                        }
+                    ]
+                },
+                {
+                    "name": "Procedure Types",
+                    "item": [
+                        {
+                            "name": "Get All Procedure Types",
+                            "request": {
+                                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{baseUrl}}/config/procedure-types",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["config", "procedure-types"]
+                                },
+                                "description": "Retrieves all procedure type definitions."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Get Procedure Type By ID",
+                            "request": {
+                                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{baseUrl}}/config/procedure-types/{{procedureTypeId}}",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["config", "procedure-types", "{{procedureTypeId}}"]
+                                },
+                                "description": "Retrieves a specific procedure type by ID."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Update Procedure Type",
+                            "request": {
+                                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                                "method": "PATCH",
+                                "header": [],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"allowsObservations\": true,\n    \"allowsReentry\": true\n}",
+                                    "options": { "raw": { "language": "json" } }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/config/procedure-types/{{procedureTypeId}}",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["config", "procedure-types", "{{procedureTypeId}}"]
+                                },
+                                "description": "Updates a procedure type configuration."
+                            },
+                            "response": []
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Dashboard",
+            "item": [
+                {
+                    "name": "Get Dashboard",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/dashboard",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["dashboard"]
+                        },
+                        "description": "Retrieves global dashboard statistics: totals per status, overdue count, pending observations, etc."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Alerts",
+            "item": [
+                {
+                    "name": "Get Overdue Procedures",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/alerts/overdue",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["alerts", "overdue"]
+                        },
+                        "description": "Returns procedures that have exceeded their deadline."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Due Soon Procedures",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/alerts/due-soon",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["alerts", "due-soon"]
+                        },
+                        "description": "Returns procedures approaching their deadline."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Pending Pickup Procedures",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/alerts/pending-pickup",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["alerts", "pending-pickup"]
+                        },
+                        "description": "Returns procedures in SUBSANACION_PENDIENTE_REINGRESO status."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get RAI Expiration Alerts",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/alerts/rai-expiration",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["alerts", "rai-expiration"]
+                        },
+                        "description": "Returns RAI licenses nearing expiration."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get IAA Missing Alerts",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/alerts/iaa-missing",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["alerts", "iaa-missing"]
+                        },
+                        "description": "Returns companies/procedures with missing IAA documents."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Alerts Summary",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/alerts/summary",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["alerts", "summary"]
+                        },
+                        "description": "Returns a count summary of all alert types."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Reports",
+            "item": [
+                {
+                    "name": "Procedures Report",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/procedures",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["reports", "procedures"],
+                            "query": [
+                                { "key": "from", "value": "2026-01-01", "disabled": true },
+                                { "key": "to", "value": "2026-12-31", "disabled": true },
+                                { "key": "status", "value": "", "disabled": true },
+                                { "key": "procedureKind", "value": "", "disabled": true }
+                            ]
+                        },
+                        "description": "Generates a procedures report with optional date range and status filters."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Companies Report",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/companies",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["reports", "companies"],
+                            "query": [
+                                { "key": "category", "value": "", "disabled": true }
+                            ]
+                        },
+                        "description": "Generates a companies report grouped by category."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Expired RAI Report",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/expired-rai",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["reports", "expired-rai"]
+                        },
+                        "description": "Returns all expired RAI licenses."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "IAA Status Report",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/iaa-status",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["reports", "iaa-status"]
+                        },
+                        "description": "Returns IAA status summary across all companies."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Activity Report",
+                    "request": {
+                        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/activity",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["reports", "activity"],
+                            "query": [
+                                { "key": "from", "value": "2026-01-01", "disabled": true },
+                                { "key": "to", "value": "2026-12-31", "disabled": true }
+                            ]
+                        },
+                        "description": "Returns user activity report within a date range."
                     },
                     "response": []
                 }

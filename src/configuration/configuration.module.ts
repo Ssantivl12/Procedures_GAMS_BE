@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { PrismaService } from '../db/prisma.service';
 import { ConfigCacheService } from './config-cache.service';
 import { DeadlinesController } from './deadlines.controller';
 import { DeadlinesService } from './deadlines.service';
@@ -11,7 +10,6 @@ import { ProcedureTypesService } from './procedure-types.service';
 @Module({
   controllers: [DeadlinesController, NonWorkingDaysController, ProcedureTypesController],
   providers: [
-    PrismaService,
     ConfigCacheService,
     DeadlinesService,
     NonWorkingDaysService,

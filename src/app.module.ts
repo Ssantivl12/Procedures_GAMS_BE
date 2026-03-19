@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -16,8 +16,9 @@ import { ObservationsModule } from './observations/observations.module';
 import { DocumentsModule } from './documents/documents.module';
 import { ConfigurationModule } from './configuration/configuration.module';
 import { ReportsModule } from './reports/reports.module';
-import { PrismaService } from './db/prisma.service';
+import { DbModule } from './db/db.module';
 import { AUTH } from './common/constants/auth.constants';
+import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 
 @Module({
   imports: [
@@ -29,6 +30,8 @@ import { AUTH } from './common/constants/auth.constants';
         REFRESH_TOKEN_EXPIRES_IN: Joi.string().default('7d'),
         DATABASE_URL: Joi.string().required(),
         FRONTEND_URL: Joi.string().uri().default('http://localhost:5173'),
+        UPLOAD_MAX_SIZE_MB: Joi.number().integer().min(1).max(100).default(20),
+        UPLOAD_ALLOWED_TYPES: Joi.string().default('application/pdf'),
       }),
     }),
     ThrottlerModule.forRoot([
@@ -36,6 +39,7 @@ import { AUTH } from './common/constants/auth.constants';
       { name: 'password', ttl: AUTH.RATE_LIMIT.PASSWORD.ttl, limit: AUTH.RATE_LIMIT.PASSWORD.limit },
     ]),
     ScheduleModule.forRoot(),
+    DbModule,
     UsersModule,
     AuditModule,
     AuthModule,
@@ -48,6 +52,10 @@ import { AUTH } from './common/constants/auth.constants';
     ReportsModule,
   ],
   controllers: [AppController],
-  providers: [AppService, PrismaService],
+  providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(CorrelationIdMiddleware).forRoutes('*');
+  }
+}

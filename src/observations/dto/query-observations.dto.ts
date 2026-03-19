@@ -1,5 +1,6 @@
-import { IsOptional, IsUUID, IsBoolean, IsInt, Min, Max, IsString, IsIn } from 'class-validator';
+import { IsOptional, IsUUID, IsBoolean, IsInt, Min, Max, IsEnum } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
+import { ObservationCategory, ObservationPriority } from '@prisma/client';
 
 export class QueryObservationsDto {
   @IsOptional()
@@ -29,12 +30,10 @@ export class QueryObservationsDto {
   isResolved?: boolean;
 
   @IsOptional()
-  @IsString()
-  @IsIn(['DOCUMENTAL', 'TECNICA', 'ADMINISTRATIVA', 'LEGAL', 'OTRA'])
-  category?: string;
+  @IsEnum(ObservationCategory)
+  category?: ObservationCategory;
 
   @IsOptional()
-  @IsString()
-  @IsIn(['ALTA', 'MEDIA', 'BAJA'])
-  priority?: string;
+  @IsEnum(ObservationPriority)
+  priority?: ObservationPriority;
 }
