@@ -77,8 +77,13 @@ export class UsersService {
 
     const where: Prisma.UserWhereInput = {
       deletedAt: null,
-      isActive: isSuperAdmin && isActive !== undefined ? isActive : true,
     };
+
+    if (isSuperAdmin && isActive !== undefined) {
+      where.isActive = isActive;
+    } else if (!isSuperAdmin) {
+      where.isActive = true;
+    }
 
     if (search) {
       where.OR = [
