@@ -34,7 +34,7 @@ export class UsersController {
   }
 
   @Get()
-  @Roles(UserRole.SUPERADMIN)
+  @Roles(UserRole.SUPERADMIN, UserRole.ENCARGADO)
   findAll(@Query() query: QueryUsersDto, @Req() req: any) {
     return this.usersService.findAll(query, req.user.roles);
   }
