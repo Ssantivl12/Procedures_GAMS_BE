@@ -33,7 +33,6 @@ export class CasesService {
       SELECT COALESCE(MAX(CAST(SPLIT_PART(code, '-', 3) AS INT)), 0) AS max_seq
       FROM case_file
       WHERE code LIKE ${pattern}
-      FOR UPDATE
     `;
     const next = Number(result[0].max_seq) + 1;
     return `EXP-${year}-${next.toString().padStart(5, '0')}`;
