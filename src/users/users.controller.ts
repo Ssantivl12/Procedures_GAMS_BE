@@ -39,8 +39,14 @@ export class UsersController {
     return this.usersService.findAll(query, req.user.roles);
   }
 
-  // IMPORTANT: GET /users/me must be declared BEFORE GET /users/:id
-  // to prevent "me" from being captured as an :id parameter.
+  // IMPORTANT: static routes (/me, /inspectors) must be declared BEFORE GET /users/:id
+  // to prevent them from being captured as :id parameters.
+  @Get('inspectors')
+  @Roles(UserRole.SUPERADMIN, UserRole.ENCARGADO)
+  listInspectors() {
+    return this.usersService.listInspectors();
+  }
+
   @Get('me')
   @Roles(UserRole.SUPERADMIN, UserRole.ENCARGADO, UserRole.SECRETARIA, UserRole.INSPECTOR)
   getMe(@Req() req: any) {

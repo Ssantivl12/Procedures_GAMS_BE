@@ -118,6 +118,34 @@ export class UsersService {
   }
 
   // ---------------------------------------------------------------------------
+  // listInspectors — active users assignable as inspectors
+  // ---------------------------------------------------------------------------
+
+  async listInspectors() {
+    const users = await this.prisma.user.findMany({
+      where: {
+        isActive: true,
+        deletedAt: null,
+        roles: {
+          some: {
+            role: { name: { in: [UserRole.INSPECTOR, UserRole.ENCARGADO, UserRole.SUPERADMIN] } },
+            revokedAt: null,
+          },
+        },
+      },
+      include: { roles: { include: { role: true }, where: { revokedAt: null } } },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+    });
+    return users.map((u) => ({
+      id: u.id,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      fullName: `${u.firstName} ${u.lastName}`.trim(),
+      roles: u.roles.map((ur) => ur.role.name),
+    }));
+  }
+
+  // ---------------------------------------------------------------------------
   // findOne / findMe
   // ---------------------------------------------------------------------------
 
