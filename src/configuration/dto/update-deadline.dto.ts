@@ -1,11 +1,17 @@
-import { IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Min, IsEnum } from 'class-validator';
+import { ProcedureTypeCode } from '@prisma/client';
 
-// PATCH only allows updating deadlineDays and description — not procedureType or cycleNumber
 export class UpdateDeadlineDto {
-  @IsOptional()
+  @IsEnum(ProcedureTypeCode)
+  procedureType: ProcedureTypeCode;
+
+  @IsInt()
+  @Min(0)
+  cycleNumber: number;
+
   @IsInt()
   @Min(1)
-  deadlineDays?: number;
+  deadlineDays: number;
 
   @IsOptional()
   @IsString()

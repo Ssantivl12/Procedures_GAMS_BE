@@ -6,5 +6,5 @@ export class BulkNonWorkingDaysDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateNonWorkingDayDto)
-  days: CreateNonWorkingDayDto[];
+  dates: CreateNonWorkingDayDto[];
 }

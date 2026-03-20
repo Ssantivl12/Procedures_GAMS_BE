@@ -19,7 +19,7 @@ import { DeadlinesService } from './deadlines.service';
 import { CreateDeadlineDto } from './dto/create-deadline.dto';
 import { UpdateDeadlineDto } from './dto/update-deadline.dto';
 
-@Controller('config/deadlines')
+@Controller('config/deadline-config')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class DeadlinesController {
   constructor(private readonly service: DeadlinesService) {}
@@ -43,10 +43,10 @@ export class DeadlinesController {
     return this.service.create(dto);
   }
 
-  @Patch(':id')
+  @Patch()
   @Roles(UserRole.SUPERADMIN)
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateDeadlineDto) {
-    return this.service.update(id, dto);
+  update(@Body() dto: UpdateDeadlineDto) {
+    return this.service.update(dto);
   }
 
   @Delete(':id')

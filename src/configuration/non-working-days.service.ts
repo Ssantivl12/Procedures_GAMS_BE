@@ -63,7 +63,7 @@ export class NonWorkingDaysService {
     const inserted: any[] = [];
     const skipped: string[] = [];
 
-    for (const item of dto.days) {
+    for (const item of dto.dates) {
       const date = new Date(item.date);
       const existing = await this.prisma.nonWorkingDay.findUnique({ where: { date } });
       if (existing) {

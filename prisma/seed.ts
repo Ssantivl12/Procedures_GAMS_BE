@@ -39,30 +39,10 @@ async function main() {
 
     // 2. Define users to seed (one per role)
     const usersToSeed = [
-        {
-            email: 'superadmin@gmail.com',
-            firstName: 'Super',
-            lastName: 'Admin',
-            roleName: RoleName.SUPERADMIN,
-        },
-        {
-            email: 'encargado@gmail.com',
-            firstName: 'Encargado',
-            lastName: 'User',
-            roleName: RoleName.ENCARGADO,
-        },
-        {
-            email: 'secretaria@gmail.com',
-            firstName: 'Secretaria',
-            lastName: 'User',
-            roleName: RoleName.SECRETARIA,
-        },
-        {
-            email: 'inspector@gmail.com',
-            firstName: 'Inspector',
-            lastName: 'User',
-            roleName: RoleName.INSPECTOR,
-        },
+        { email: 'superadmin@gmail.com', firstName: 'Super', lastName: 'Admin', roleName: RoleName.SUPERADMIN },
+        { email: 'encargado@gmail.com', firstName: 'Encargado', lastName: 'User', roleName: RoleName.ENCARGADO },
+        { email: 'secretaria@gmail.com', firstName: 'Secretaria', lastName: 'User', roleName: RoleName.SECRETARIA },
+        { email: 'inspector@gmail.com', firstName: 'Inspector', lastName: 'User', roleName: RoleName.INSPECTOR },
     ];
 
     for (const userData of usersToSeed) {
@@ -104,30 +84,10 @@ async function main() {
 
     // 3. Seed ProcedureTypes
     const procedureTypes = [
-        {
-            code: ProcedureTypeCode.RAI,
-            name: 'Registro Ambiental Industrial',
-            allowsObservations: true,
-            allowsReentry: true,
-        },
-        {
-            code: ProcedureTypeCode.MAI_PMA,
-            name: 'Manifiesto Ambiental Industrial / Plan de Manejo',
-            allowsObservations: true,
-            allowsReentry: true,
-        },
-        {
-            code: ProcedureTypeCode.IAA,
-            name: 'Informe Ambiental Anual',
-            allowsObservations: true,
-            allowsReentry: true,
-        },
-        {
-            code: ProcedureTypeCode.CIERRE,
-            name: 'Plan de Cierre / Abandono',
-            allowsObservations: false,
-            allowsReentry: false,
-        },
+        { code: ProcedureTypeCode.RAI, name: 'Registro Ambiental Industrial', allowsObservations: true, allowsReentry: true },
+        { code: ProcedureTypeCode.MAI_PMA, name: 'Manifiesto Ambiental Industrial / Plan de Manejo', allowsObservations: true, allowsReentry: true },
+        { code: ProcedureTypeCode.IAA, name: 'Informe Ambiental Anual', allowsObservations: true, allowsReentry: true },
+        { code: ProcedureTypeCode.CIERRE, name: 'Plan de Cierre / Abandono', allowsObservations: false, allowsReentry: false },
     ];
 
     for (const pt of procedureTypes) {
@@ -139,15 +99,18 @@ async function main() {
     }
     console.log('ProcedureTypes seeded.');
 
-    // 4. Seed DeadlineConfig
+    // 4. Seed DeadlineConfig (Descripciones optimizadas para UI)
     const deadlineConfigs = [
-        { procedureType: ProcedureTypeCode.RAI,     cycleNumber: 0, deadlineDays: 5,  description: 'RAI — primera revisión (5 días hábiles)' },
-        { procedureType: ProcedureTypeCode.RAI,     cycleNumber: 1, deadlineDays: 10, description: 'RAI — revisión de reingresos (10 días hábiles)' },
-        { procedureType: ProcedureTypeCode.MAI_PMA, cycleNumber: 0, deadlineDays: 15, description: 'MAI_PMA — primera revisión (15 días hábiles)' },
-        { procedureType: ProcedureTypeCode.MAI_PMA, cycleNumber: 1, deadlineDays: 15, description: 'MAI_PMA — revisión de reingresos (15 días hábiles)' },
-        { procedureType: ProcedureTypeCode.IAA,     cycleNumber: 0, deadlineDays: 10, description: 'IAA — primera revisión (10 días hábiles)' },
-        { procedureType: ProcedureTypeCode.IAA,     cycleNumber: 1, deadlineDays: 10, description: 'IAA — revisión de reingresos (10 días hábiles)' },
-        { procedureType: ProcedureTypeCode.CIERRE,  cycleNumber: 0, deadlineDays: 10, description: 'Cierre/Abandono — única revisión (10 días hábiles)' },
+        { procedureType: ProcedureTypeCode.RAI,     cycleNumber: 0, deadlineDays: 5,  description: 'Revisión inicial' },
+        { procedureType: ProcedureTypeCode.RAI,     cycleNumber: 1, deadlineDays: 10, description: 'Revisión de subsanación' },
+        
+        { procedureType: ProcedureTypeCode.MAI_PMA, cycleNumber: 0, deadlineDays: 15, description: 'Revisión inicial' },
+        { procedureType: ProcedureTypeCode.MAI_PMA, cycleNumber: 1, deadlineDays: 15, description: 'Revisión de subsanación' },
+        
+        { procedureType: ProcedureTypeCode.IAA,     cycleNumber: 0, deadlineDays: 10, description: 'Revisión inicial' },
+        { procedureType: ProcedureTypeCode.IAA,     cycleNumber: 1, deadlineDays: 10, description: 'Revisión de subsanación' },
+        
+        { procedureType: ProcedureTypeCode.CIERRE,  cycleNumber: 0, deadlineDays: 10, description: 'Revisión única del plan' },
     ];
 
     for (const dc of deadlineConfigs) {
@@ -161,22 +124,24 @@ async function main() {
 
     // 5. Seed NonWorkingDays (Bolivia 2025 — stable national holidays)
     const nonWorkingDays2025 = [
-        { date: '2025-01-01', description: 'Año Nuevo',                                   type: 'NACIONAL' },
-        { date: '2025-01-22', description: 'Fundación del Estado Plurinacional',           type: 'NACIONAL' },
-        { date: '2025-03-03', description: 'Lunes de Carnaval',                            type: 'NACIONAL' },
-        { date: '2025-03-04', description: 'Martes de Carnaval',                           type: 'NACIONAL' },
-        { date: '2025-04-18', description: 'Viernes Santo',                                type: 'NACIONAL' },
-        { date: '2025-05-01', description: 'Día del Trabajo',                              type: 'NACIONAL' },
-        { date: '2025-06-19', description: 'Corpus Christi',                               type: 'NACIONAL' },
-        { date: '2025-06-21', description: 'Año Nuevo Aymara',                             type: 'NACIONAL' },
-        { date: '2025-08-06', description: 'Día de la Independencia',                      type: 'NACIONAL' },
-        { date: '2025-09-14', description: 'Día del Departamento de Cochabamba',           type: 'DEPARTAMENTAL' },
-        { date: '2025-11-02', description: 'Día de Difuntos',                              type: 'NACIONAL' },
-        { date: '2025-12-25', description: 'Navidad',                                      type: 'NACIONAL' },
+        { date: '2025-01-01', description: 'Año Nuevo',                                type: 'NACIONAL' },
+        { date: '2025-01-22', description: 'Fundación del Estado Plurinacional',       type: 'NACIONAL' },
+        { date: '2025-03-03', description: 'Lunes de Carnaval',                        type: 'NACIONAL' },
+        { date: '2025-03-04', description: 'Martes de Carnaval',                       type: 'NACIONAL' },
+        { date: '2025-04-18', description: 'Viernes Santo',                            type: 'NACIONAL' },
+        { date: '2025-05-01', description: 'Día del Trabajo',                          type: 'NACIONAL' },
+        { date: '2025-06-19', description: 'Corpus Christi',                           type: 'NACIONAL' },
+        { date: '2025-06-21', description: 'Año Nuevo Aymara',                         type: 'NACIONAL' },
+        { date: '2025-08-06', description: 'Día de la Independencia',                  type: 'NACIONAL' },
+        { date: '2025-09-14', description: 'Día del Departamento de Cochabamba',       type: 'DEPARTAMENTAL' },
+        { date: '2025-11-02', description: 'Día de Difuntos',                          type: 'NACIONAL' },
+        { date: '2025-12-25', description: 'Navidad',                                  type: 'NACIONAL' },
     ];
 
     for (const nwd of nonWorkingDays2025) {
-        const date = new Date(nwd.date);
+        // Forzar a que se tome como UTC explícito para evitar desfases de Timezone
+        const date = new Date(`${nwd.date}T00:00:00Z`);
+        
         await prisma.nonWorkingDay.upsert({
             where: { date },
             update: { description: nwd.description, type: nwd.type },

@@ -17,9 +17,19 @@ export class DeadlinesService {
   ) {}
 
   async findAll() {
-    return this.prisma.deadlineConfig.findMany({
-      orderBy: [{ procedureType: 'asc' }, { cycleNumber: 'asc' }],
-    });
+    const [configs, types] = await Promise.all([
+      this.prisma.deadlineConfig.findMany({
+        where: { isActive: true },
+        orderBy: [{ procedureType: 'asc' }, { cycleNumber: 'asc' }],
+      }),
+      this.prisma.procedureType.findMany(),
+    ]);
+
+    return configs.map(config => ({
+      ...config,
+      workingDays: config.deadlineDays, // Map for FE
+      procedureTypeData: types.find(t => t.code === config.procedureType),
+    }));
   }
 
   async findOne(id: number) {
@@ -48,11 +58,18 @@ export class DeadlinesService {
     return record;
   }
 
-  async update(id: number, dto: UpdateDeadlineDto) {
-    await this.findOne(id);
+  async update(dto: UpdateDeadlineDto) {
     const record = await this.prisma.deadlineConfig.update({
-      where: { id },
-      data: dto,
+      where: {
+        procedureType_cycleNumber: {
+          procedureType: dto.procedureType,
+          cycleNumber: dto.cycleNumber,
+        },
+      },
+      data: {
+        deadlineDays: dto.deadlineDays,
+        description: dto.description,
+      },
     });
     await this.cache.refreshDeadlines();
     return record;
