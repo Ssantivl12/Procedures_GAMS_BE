@@ -46,6 +46,7 @@ export class ProceduresService {
       procedureType: { select: { id: true, code: true, name: true } },
       assignedInspector: { select: { id: true, firstName: true, lastName: true } },
       createdBy: { select: { id: true, firstName: true, lastName: true } },
+      cycles: { where: { isActive: true }, orderBy: { cycleNumber: 'asc' as Prisma.SortOrder } },
     };
   }
 

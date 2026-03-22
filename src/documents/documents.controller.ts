@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
@@ -47,7 +48,7 @@ export class DocumentsController {
   upload(
     @Param('procedureId') procedureId: string,
     @UploadedFile() file: any,
-    @Query() dto: UploadDocumentDto,
+    @Body() dto: UploadDocumentDto,
     @Req() req: any,
   ) {
     return this.documentsService.upload(procedureId, dto, file, req.user.sub);
