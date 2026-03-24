@@ -117,13 +117,12 @@ model UserRole {
 model Company {
   id           String          @id @default(uuid())
 
-  // Existing fields
-  legalName    String                        // Unidad Industrial
+  legalName    String                       
   nit          String?         @unique
   raiNumber    String?         @unique
   category     CompanyCategory
   address      String?
-  phone        String?                       // Contacto U.I (varios separados por coma)
+  phone        String?                       
   legalRepName String?
   legalRepCi   String?
   caebCodes    String[]
@@ -132,28 +131,27 @@ model Company {
   email        String?
   observations String?
 
-  // New fields
-  businessClass               String?       // Clase
-  district                    String?       // Distrito
-  geoZone                     String?       // Zona geográfica: Urbano / Rural
-  utmZone                     String?       // Zona UTM: 19K / 20K
-  coordinates                 String?       // Coordenadas (ingreso manual)
+  businessClass               String?      
+  district                    String?      
+  geoZone                     String?       
+  utmZone                     String?       
+  coordinates                 String?       
 
-  effluentDisposal            String?       // Disposición Final de Efluentes
-  solidWasteDisposal          String?       // Disposición de Residuos Sólidos
+  effluentDisposal            String?       
+  solidWasteDisposal          String?      
 
   useHazardousSubstances      Boolean?      @default(false)
   hazardousSubstancesDescription String?
   usesMercury                 Boolean?      @default(false)
 
-  rawMaterials                Json?         // [{ name, quantity }]
-  finalProducts               Json?         // [{ name, quantity, unit }]
+  rawMaterials                Json?         
+  finalProducts               Json?        
 
-  usedArea                    Float?        // Superficie Utilizada
-  areaUnit                    String?       // Unidad de superficie
+  usedArea                    Float?        
+  areaUnit                    String?       
 
-  waterSupply                 String?       // Abastecimiento de Agua
-  installedPower              Float?        // Potencia Instalada
+  waterSupply                 String?       
+  installedPower              Float?        
 
   isActive  Boolean   @default(true)
   deletedAt DateTime? @db.Timestamptz(6)

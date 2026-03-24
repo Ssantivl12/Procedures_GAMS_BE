@@ -40,12 +40,12 @@ export class QueryCompaniesDto {
 
   @IsOptional()
   @Transform(({ value }) => {
-    if (value === 'true' || value === true || value === '1') return true;
-    if (value === 'false' || value === false || value === '0') return false;
-    return true; 
-  })
+  if (value === 'true' || value === true || value === '1') return true;
+  if (value === 'false' || value === false || value === '0') return false;
+  return undefined; 
+})
   @IsBoolean()
-  isActive?: boolean = true;
+  isActive?: boolean;
 
   @IsOptional()
   @IsIn(['legalName', 'createdAt', 'raiNumber'])
@@ -54,4 +54,8 @@ export class QueryCompaniesDto {
   @IsOptional()
   @IsIn(['asc', 'desc'])
   sortOrder?: 'asc' | 'desc' = 'asc';
+
+  @IsOptional()
+  @IsString()
+  geoZone?: string;
 }

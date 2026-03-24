@@ -83,7 +83,7 @@ export class CompaniesService {
       category,
       municipality,
       hasRaiNumber,
-      isActive = true,
+      isActive,
       sortBy = 'legalName' as const,
       sortOrder = 'asc' as const,
     } = query;
@@ -92,7 +92,7 @@ export class CompaniesService {
     const limitNum = Number(limit);
 
     const where: Prisma.CompanyWhereInput = {
-      isActive,
+      ...(isActive !== undefined && { isActive }),
     };
 
     if (search) {
@@ -105,6 +105,9 @@ export class CompaniesService {
 
     if (category) where.category = category;
     if (municipality) where.municipality = municipality;
+    if (query.geoZone) {
+      where.geoZone = { equals: query.geoZone, mode: 'insensitive' };
+    }
     if (hasRaiNumber !== undefined) {
       where.raiNumber = hasRaiNumber ? { not: null } : null;
     }
