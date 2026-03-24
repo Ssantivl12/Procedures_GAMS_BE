@@ -32,7 +32,6 @@ export class CompaniesService {
       legalName: dto.legalName,
       category: dto.category,
       nit: dto.nit,
-      // raiNumber intentionally omitted — only assignable via PATCH after RAI approval
       address: dto.address,
       phone: dto.phone,
       email: dto.email,
@@ -42,6 +41,27 @@ export class CompaniesService {
       economicActivity: dto.economicActivity,
       municipality: dto.municipality || COMPANY_DEFAULTS.MUNICIPALITY,
       observations: dto.observations,
+
+      businessClass: dto.businessClass,
+      district: dto.district,
+      geoZone: dto.geoZone,
+      utmZone: dto.utmZone,
+      coordinates: dto.coordinates,
+      effluentDisposal: dto.effluentDisposal,
+      solidWasteDisposal: dto.solidWasteDisposal,
+      useHazardousSubstances: dto.useHazardousSubstances ?? false,
+      hazardousSubstancesDescription: dto.useHazardousSubstances
+        ? dto.hazardousSubstancesDescription
+        : null,
+      usesMercury: dto.usesMercury ?? false,
+
+      rawMaterials: (dto.rawMaterials ?? []) as unknown as Prisma.InputJsonValue,
+      finalProducts: (dto.finalProducts ?? []) as unknown as Prisma.InputJsonValue,
+      
+      usedArea: dto.usedArea,
+      areaUnit: dto.areaUnit,
+      waterSupply: dto.waterSupply,
+      installedPower: dto.installedPower,
     };
 
     const company = await this.prisma.company.create({ data });
@@ -175,6 +195,27 @@ export class CompaniesService {
     if (dto.economicActivity !== undefined) data.economicActivity = dto.economicActivity;
     if (dto.municipality !== undefined) data.municipality = dto.municipality;
     if (dto.observations !== undefined) data.observations = dto.observations;
+    if (dto.businessClass  !== undefined) data.businessClass  = dto.businessClass;
+    if (dto.district       !== undefined) data.district       = dto.district;
+    if (dto.geoZone        !== undefined) data.geoZone        = dto.geoZone;
+    if (dto.utmZone        !== undefined) data.utmZone        = dto.utmZone;
+    if (dto.coordinates    !== undefined) data.coordinates    = dto.coordinates;
+    if (dto.effluentDisposal   !== undefined) data.effluentDisposal   = dto.effluentDisposal;
+    if (dto.solidWasteDisposal !== undefined) data.solidWasteDisposal = dto.solidWasteDisposal;
+    if (dto.useHazardousSubstances !== undefined) {
+      data.useHazardousSubstances = dto.useHazardousSubstances;
+
+      data.hazardousSubstancesDescription = dto.useHazardousSubstances
+        ? dto.hazardousSubstancesDescription
+        : null;
+    }
+    if (dto.usesMercury    !== undefined) data.usesMercury    = dto.usesMercury;
+    if (dto.rawMaterials   !== undefined) data.rawMaterials   = dto.rawMaterials   as any;
+    if (dto.finalProducts  !== undefined) data.finalProducts  = dto.finalProducts  as any;
+    if (dto.usedArea       !== undefined) data.usedArea       = dto.usedArea;
+    if (dto.areaUnit       !== undefined) data.areaUnit       = dto.areaUnit;
+    if (dto.waterSupply    !== undefined) data.waterSupply    = dto.waterSupply;
+    if (dto.installedPower !== undefined) data.installedPower = dto.installedPower;
 
     const company = await this.prisma.company.update({
       where: { id },

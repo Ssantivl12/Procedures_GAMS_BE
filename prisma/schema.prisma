@@ -116,20 +116,44 @@ model UserRole {
 
 model Company {
   id           String          @id @default(uuid())
-  legalName    String
+
+  // Existing fields
+  legalName    String                        // Unidad Industrial
   nit          String?         @unique
   raiNumber    String?         @unique
   category     CompanyCategory
   address      String?
-  phone        String?
+  phone        String?                       // Contacto U.I (varios separados por coma)
   legalRepName String?
   legalRepCi   String?
-
-  caebCodes        String[]
+  caebCodes    String[]
   economicActivity String?
-  municipality     String?
-  email            String?
-  observations     String?
+  municipality String?
+  email        String?
+  observations String?
+
+  // New fields
+  businessClass               String?       // Clase
+  district                    String?       // Distrito
+  geoZone                     String?       // Zona geográfica: Urbano / Rural
+  utmZone                     String?       // Zona UTM: 19K / 20K
+  coordinates                 String?       // Coordenadas (ingreso manual)
+
+  effluentDisposal            String?       // Disposición Final de Efluentes
+  solidWasteDisposal          String?       // Disposición de Residuos Sólidos
+
+  useHazardousSubstances      Boolean?      @default(false)
+  hazardousSubstancesDescription String?
+  usesMercury                 Boolean?      @default(false)
+
+  rawMaterials                Json?         // [{ name, quantity }]
+  finalProducts               Json?         // [{ name, quantity, unit }]
+
+  usedArea                    Float?        // Superficie Utilizada
+  areaUnit                    String?       // Unidad de superficie
+
+  waterSupply                 String?       // Abastecimiento de Agua
+  installedPower              Float?        // Potencia Instalada
 
   isActive  Boolean   @default(true)
   deletedAt DateTime? @db.Timestamptz(6)
