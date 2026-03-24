@@ -1,5 +1,5 @@
 import { IsOptional, IsEnum, IsInt, Min, Max, IsString, MinLength, IsBoolean, IsIn } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform  } from 'class-transformer';
 import { CompanyCategory } from '@prisma/client';
 
 export class QueryCompaniesDto {
@@ -30,12 +30,20 @@ export class QueryCompaniesDto {
   municipality?: string;
 
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(({ value }) => {
+    if (value === 'true' || value === true || value === '1') return true;
+    if (value === 'false' || value === false || value === '0') return false;
+    return undefined;
+  })
   @IsBoolean()
   hasRaiNumber?: boolean;
 
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(({ value }) => {
+    if (value === 'true' || value === true || value === '1') return true;
+    if (value === 'false' || value === false || value === '0') return false;
+    return true; 
+  })
   @IsBoolean()
   isActive?: boolean = true;
 

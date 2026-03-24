@@ -89,9 +89,10 @@ export class CompaniesService {
       where.raiNumber = hasRaiNumber ? { not: null } : null;
     }
 
-    const orderBy: Prisma.CompanyOrderByWithRelationInput = {
-      [sortBy]: sortOrder,
-    };
+    const orderBy: Prisma.CompanyOrderByWithRelationInput[] = [
+      { isActive: 'desc' },
+      { [sortBy]: sortOrder },
+    ];
 
     const skip = (pageNum - 1) * limitNum;
     const take = limitNum;
