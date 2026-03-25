@@ -265,6 +265,27 @@ export class CompaniesService {
     };
   }
 
+  async reactivate(id: string, userId: string): Promise<{ message: string; id: string }> {
+    await this.prisma.company.update({
+      where: { id },
+      data: {
+        isActive: true,
+        deletedAt: null,
+      },
+    });
+
+    await this.auditService.log({
+      action: COMPANY_AUDIT_ACTIONS.REACTIVATED,
+      userId,
+      details: { companyId: id },
+    });
+
+    return {
+      message: COMPANY_MESSAGES.SUCCESS.REACTIVATED,
+      id,
+    };
+  }
+
   async hasActiveCaseFile(companyId: string): Promise<boolean> {
     const caseFile = await this.prisma.caseFile.findFirst({
       where: {

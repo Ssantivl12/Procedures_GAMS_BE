@@ -91,6 +91,18 @@ export class CompaniesController {
     return this.companiesService.remove(id, user.sub);
   }
 
+  @Patch(':id/reactivate')
+  @Roles(UserRole.SUPERADMIN)
+  async reactivate(@Param('id') id: string, @Req() req: any) {
+    const user = req.user;
+    const company = await this.companiesService.findOne(id);
+    if (!company) throw new NotFoundException(COMPANY_MESSAGES.ERROR.NOT_FOUND);
+    if (company.isActive) {
+      throw new ConflictException(COMPANY_MESSAGES.ERROR.ALREADY_ACTIVE);
+    }
+    return this.companiesService.reactivate(id, user.sub);
+  }
+
   @Get(':id/case-file')
   @Roles(UserRole.SUPERADMIN, UserRole.SECRETARIA, UserRole.INSPECTOR, UserRole.ENCARGADO)
   async getCaseFile(@Param('id') id: string) {
