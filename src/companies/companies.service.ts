@@ -57,6 +57,7 @@ export class CompaniesService {
 
       rawMaterials: (dto.rawMaterials ?? []) as unknown as Prisma.InputJsonValue,
       finalProducts: (dto.finalProducts ?? []) as unknown as Prisma.InputJsonValue,
+      legalRepresentatives: (dto.legalRepresentatives ?? []) as unknown as Prisma.InputJsonValue,
       
       usedArea: dto.usedArea,
       areaUnit: dto.areaUnit,
@@ -219,6 +220,9 @@ export class CompaniesService {
     if (dto.areaUnit       !== undefined) data.areaUnit       = dto.areaUnit;
     if (dto.waterSupply    !== undefined) data.waterSupply    = dto.waterSupply;
     if (dto.installedPower !== undefined) data.installedPower = dto.installedPower;
+    if (dto.legalRepresentatives !== undefined) {
+      data.legalRepresentatives = dto.legalRepresentatives as any;
+    }
 
     const company = await this.prisma.company.update({
       where: { id },

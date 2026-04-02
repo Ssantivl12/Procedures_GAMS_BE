@@ -171,6 +171,7 @@ model Company {
   phone        String?                       
   legalRepName String?
   legalRepCi   String?
+  legalRepresentatives Json?
   caebCodes    String[]
   economicActivity String?
   municipality String?

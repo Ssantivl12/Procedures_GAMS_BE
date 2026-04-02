@@ -25,6 +25,17 @@ export class FinalProductDto {
   unit: string;
 }
 
+export class LegalRepresentativeDto {
+  @IsString() @MaxLength(255)
+  name: string;
+
+  @IsOptional() @IsString() @MaxLength(20)
+  ci?: string;
+
+  @IsOptional() @IsString() @MaxLength(500)
+  phone?: string;
+}
+
 
 
 export class CreateCompanyDto {
@@ -50,6 +61,12 @@ export class CreateCompanyDto {
 
   @IsOptional() @IsEmail()
   email?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => LegalRepresentativeDto)
+  legalRepresentatives?: LegalRepresentativeDto[];
 
   @IsOptional() @IsString() @MaxLength(255)
   legalRepName?: string;
