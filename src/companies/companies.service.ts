@@ -106,7 +106,7 @@ export class CompaniesService {
     if (category) where.category = category;
     if (municipality) where.municipality = municipality;
     if (query.geoZone) {
-      where.geoZone = { equals: query.geoZone, mode: 'insensitive' };
+      where.geoZone = query.geoZone;
     }
     if (hasRaiNumber !== undefined) {
       where.raiNumber = hasRaiNumber ? { not: null } : null;

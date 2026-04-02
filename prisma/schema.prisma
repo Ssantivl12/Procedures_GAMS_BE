@@ -114,6 +114,52 @@ model UserRole {
   @@map("user_role")
 }
 
+enum District {
+  DISTRITO_1
+  DISTRITO_2
+  DISTRITO_3
+  DISTRITO_4
+  DISTRITO_5
+  DISTRITO_6
+  DISTRITO_7
+  DISTRITO_LAVA_LAVA
+  DISTRITO_CHINATA
+}
+
+enum GeoZone {
+  Urbano
+  Rural
+}
+
+enum UtmZone {
+  ZONE_19K
+  ZONE_20K
+}
+
+enum EffluentDisposal {
+  PTAR
+  PTAR_ALCANTARILLADO
+  ALCANTARILLADO_COOPERATIVA
+  POZO_SEPTICO
+  OTRO
+}
+
+enum SolidWasteDisposal {
+  GERES
+  TERCIARIZACION
+  GERES_TERCIARIZACION
+  OTRO
+}
+
+enum WaterSupply {
+  POZO_DE_AGUA
+  RED_DE_AGUA_COOPERATIVA
+  CISTERNA
+  EMAPAS
+  POZO_COOPERATIVA
+  OTROS
+}
+
 model Company {
   id           String          @id @default(uuid())
 
@@ -132,13 +178,13 @@ model Company {
   observations String?
 
   businessClass               String?      
-  district                    String?      
-  geoZone                     String?       
-  utmZone                     String?       
+  district                    District?      
+  geoZone                     GeoZone?       
+  utmZone                     UtmZone?       
   coordinates                 String?       
 
-  effluentDisposal            String?       
-  solidWasteDisposal          String?      
+  effluentDisposal            EffluentDisposal?       
+  solidWasteDisposal          SolidWasteDisposal?      
 
   useHazardousSubstances      Boolean?      @default(false)
   hazardousSubstancesDescription String?
@@ -150,7 +196,7 @@ model Company {
   usedArea                    Float?        
   areaUnit                    String?       
 
-  waterSupply                 String?       
+  waterSupply                 WaterSupply?       
   installedPower              Float?        
 
   isActive  Boolean   @default(true)

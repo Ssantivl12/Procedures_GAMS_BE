@@ -4,7 +4,7 @@ import {
   ArrayMaxSize, IsBoolean, IsNumber, IsIn, ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { CompanyCategory } from '@prisma/client';
+import { CompanyCategory, District, GeoZone, UtmZone, EffluentDisposal, SolidWasteDisposal, WaterSupply } from '@prisma/client';
 
 export class RawMaterialDto {
   @IsString() @MaxLength(255)
@@ -25,28 +25,7 @@ export class FinalProductDto {
   unit: string;
 }
 
-export const DISTRICTS = [
-  'DISTRITO 1', 'DISTRITO 2', 'DISTRITO 3', 'DISTRITO 4',
-  'DISTRITO 5', 'DISTRITO 6', 'DISTRITO 7',
-  'DISTRITO LAVA LAVA', 'DISTRITO CHIÑATA',
-] as const;
 
-export const GEO_ZONES  = ['Urbano', 'Rural'] as const;
-export const UTM_ZONES  = ['19K', '20K']      as const;
-
-export const EFFLUENT_DISPOSAL_OPTIONS = [
-  'PTAR', 'PTAR+ALCANTARILLADO', 'ALCANTARILLADO COOPERATIVA',
-  'POZO SEPTICO', 'OTRO',
-] as const;
-
-export const SOLID_WASTE_DISPOSAL_OPTIONS = [
-  'GERES', 'TERCIARIZACIÓN', 'GERES+TERCIARIZACIÓN', 'OTRO',
-] as const;
-
-export const WATER_SUPPLY_OPTIONS = [
-  'POZO DE AGUA', 'RED DE AGUA(COOPERATIVA)', 'CISTERNA',
-  'EMAPAS', 'POZO+COOPERATIVA', 'OTROS',
-] as const;
 
 export class CreateCompanyDto {
 
@@ -99,18 +78,18 @@ export class CreateCompanyDto {
 
   /** Distrito */
   @IsOptional()
-  @IsIn(DISTRICTS, { message: 'Distrito no válido' })
-  district?: string;
+  @IsEnum(District, { message: 'Distrito no válido' })
+  district?: District;
 
   /** Zona geográfica: Urbano / Rural */
   @IsOptional()
-  @IsIn(GEO_ZONES, { message: 'Zona geográfica debe ser Urbano o Rural' })
-  geoZone?: string;
+  @IsEnum(GeoZone, { message: 'Zona geográfica no válida' })
+  geoZone?: GeoZone;
 
   /** Zona UTM: 19K / 20K */
   @IsOptional()
-  @IsIn(UTM_ZONES, { message: 'Zona UTM debe ser 19K o 20K' })
-  utmZone?: string;
+  @IsEnum(UtmZone, { message: 'Zona UTM debe ser 19K o 20K' })
+  utmZone?: UtmZone;
 
   /** Coordenadas — ingreso manual */
   @IsOptional() @IsString() @MaxLength(100)
@@ -118,13 +97,13 @@ export class CreateCompanyDto {
 
   /** Disposición Final de Efluentes Industriales */
   @IsOptional()
-  @IsIn(EFFLUENT_DISPOSAL_OPTIONS, { message: 'Opción de disposición de efluentes no válida' })
-  effluentDisposal?: string;
+  @IsEnum(EffluentDisposal, { message: 'Opción de disposición de efluentes no válida' })
+  effluentDisposal?: EffluentDisposal;
 
   /** Disposición de Residuos Sólidos */
   @IsOptional()
-  @IsIn(SOLID_WASTE_DISPOSAL_OPTIONS, { message: 'Opción de disposición de residuos no válida' })
-  solidWasteDisposal?: string;
+  @IsEnum(SolidWasteDisposal, { message: 'Opción de disposición de residuos no válida' })
+  solidWasteDisposal?: SolidWasteDisposal;
 
   /** Uso de sustancias peligrosas */
   @IsOptional() @IsBoolean()
@@ -162,8 +141,8 @@ export class CreateCompanyDto {
 
   /** Abastecimiento de Agua */
   @IsOptional()
-  @IsIn(WATER_SUPPLY_OPTIONS, { message: 'Opción de abastecimiento de agua no válida' })
-  waterSupply?: string;
+  @IsEnum(WaterSupply, { message: 'Opción de abastecimiento de agua no válida' })
+  waterSupply?: WaterSupply;
 
   /** Potencia Instalada */
   @IsOptional() @IsNumber()

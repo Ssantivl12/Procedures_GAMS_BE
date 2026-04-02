@@ -1,6 +1,6 @@
 import { IsOptional, IsEnum, IsInt, Min, Max, IsString, MinLength, IsBoolean, IsIn } from 'class-validator';
 import { Type, Transform  } from 'class-transformer';
-import { CompanyCategory } from '@prisma/client';
+import { CompanyCategory, GeoZone } from '@prisma/client';
 
 export class QueryCompaniesDto {
   @IsOptional()
@@ -56,6 +56,6 @@ export class QueryCompaniesDto {
   sortOrder?: 'asc' | 'desc' = 'asc';
 
   @IsOptional()
-  @IsString()
-  geoZone?: string;
+  @IsEnum(GeoZone)
+  geoZone?: GeoZone;
 }
