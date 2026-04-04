@@ -1,5 +1,5 @@
-import { IsOptional, IsEnum, IsInt, Min, Max, IsString, MinLength, IsIn } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsOptional, IsBoolean, IsEnum, IsInt, Min, Max, IsString, MinLength, IsIn } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
 import { CompanyCategory } from '@prisma/client';
 
 export class QueryCaseFilesDto {
@@ -30,7 +30,11 @@ export class QueryCaseFilesDto {
   category?: CompanyCategory;
 
   @IsOptional()
-  @IsIn(['true', 'false', true, false])
-  @Type(() => Boolean)
+  @IsBoolean()
+  @Transform(({ value }) => {
+    if (value === 'true' || value === true) return true;
+    if (value === 'false' || value === false) return false;
+    return true; // default
+  })
   isActive?: boolean = true;
 }
