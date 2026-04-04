@@ -12,6 +12,9 @@ export class RawMaterialDto {
 
   @IsString() @MaxLength(100)
   quantity: string;
+
+  @IsString() @MaxLength(50)
+  unit: string;
 }
 
 export class FinalProductDto {
