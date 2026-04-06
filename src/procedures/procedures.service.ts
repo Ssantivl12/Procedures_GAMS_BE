@@ -44,6 +44,15 @@ export class ProceduresService {
   private get procedureInclude() {
     return {
       procedureType: { select: { id: true, code: true, name: true } },
+      caseFile: {
+        select: {
+          id: true,
+          code: true,
+          company: {
+            select: { id: true, legalName: true, category: true },
+          },
+        },
+      },
       assignedInspector: { select: { id: true, firstName: true, lastName: true } },
       createdBy: { select: { id: true, firstName: true, lastName: true } },
       cycles: { where: { isActive: true }, orderBy: { cycleNumber: 'asc' as Prisma.SortOrder } },
@@ -508,9 +517,14 @@ export class ProceduresService {
     // Determine if this transition creates a new review cycle
     const isFirstEnRevision =
       fromStatus === ProcedureStatus.RECIBIDO && toStatus === ProcedureStatus.EN_REVISION;
-    const isReentry =
+
+    // re-entry (from SUBSANACION) MUST use createCycle (POST /cycles) as per API Contract
+    if (
       fromStatus === ProcedureStatus.SUBSANACION_PENDIENTE_REINGRESO &&
-      toStatus === ProcedureStatus.EN_REVISION;
+      toStatus === ProcedureStatus.EN_REVISION
+    ) {
+      throw new UnprocessableEntityException(PROCEDURE_MESSAGES.ERROR.REENTRY_MUST_USE_CYCLES_ENDPOINT);
+    }
 
     // Calculate deadlineDate for all EN_REVISION entries
     let deadlineDate: Date | null = null;
@@ -530,14 +544,8 @@ export class ProceduresService {
     }
 
     // Cycle management
-    if (isFirstEnRevision || isReentry) {
+    if (isFirstEnRevision) {
       updateData.cycleCount = { increment: 1 };
-    }
-    if (isReentry) {
-      if (procedure.reentryCount >= procedure.maxReentriesAllowed) {
-        throw new ConflictException(PROCEDURE_MESSAGES.ERROR.MAX_REENTRIES_EXCEEDED);
-      }
-      updateData.reentryCount = { increment: 1 };
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -557,8 +565,8 @@ export class ProceduresService {
         },
       });
 
-      // Create ProcedureCycle for first or re-entry EN_REVISION
-      if (isFirstEnRevision || isReentry) {
+      // Create ProcedureCycle for first EN_REVISION (#1)
+      if (isFirstEnRevision) {
         // Guard: reject if there is already an open (unclosed) cycle (BUG-04)
         const openCycle = await tx.procedureCycle.findFirst({
           where: { procedureId: id, closedAt: null, isActive: true },
@@ -571,11 +579,7 @@ export class ProceduresService {
           data: {
             procedureId: id,
             cycleNumber: procedure.cycleCount + 1,
-            reentryDate: isReentry
-              ? dto.reviewStartDate
-                ? new Date(dto.reviewStartDate)
-                : new Date()
-              : null,
+            reentryDate: null,
             reviewDeadline: deadlineDate,
           },
         });
@@ -738,9 +742,9 @@ export class ProceduresService {
       const updateData: Prisma.ProcedureUpdateInput = {
         cycleCount: { increment: 1 },
         reentryCount: { increment: 1 },
+        deadlineDate: reviewDeadline,
+        isOverdue: false,
       };
-      if (reviewDeadline) updateData.deadlineDate = reviewDeadline;
-      if (reviewDeadline) updateData.isOverdue = false;
 
       if (dto.autoTransition) {
         updateData.currentStatus = ProcedureStatus.EN_REVISION;
@@ -855,12 +859,27 @@ export class ProceduresService {
       throw new NotFoundException(PROCEDURE_MESSAGES.ERROR.NOT_FOUND);
     }
 
-    return this.prisma.procedureAudit.findMany({
+    const audits = await this.prisma.procedureAudit.findMany({
       where: { procedureId },
       orderBy: { changedAt: 'asc' },
       include: {
         changedBy: { select: { id: true, firstName: true, lastName: true } },
       },
     });
+
+    return audits.map((audit) => ({
+      id: audit.id,
+      procedureId: audit.procedureId,
+      fromStatus: audit.fromStatus,
+      toStatus: audit.toStatus,
+      changedAt: audit.changedAt,
+      note: audit.note,
+      changedBy: audit.changedBy
+        ? {
+            id: audit.changedBy.id,
+            fullName: `${audit.changedBy.firstName} ${audit.changedBy.lastName}`.trim(),
+          }
+        : null,
+    }));
   }
 }

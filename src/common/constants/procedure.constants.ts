@@ -109,6 +109,7 @@ export const PROCEDURE_MESSAGES = {
     CYCLE_REQUIRES_SUBSANACION: 'autoTransition requires procedure to be in SUBSANACION_PENDIENTE_REINGRESO',
     OPEN_CYCLE_EXISTS: 'There is already an open cycle for this procedure. Close it before creating a new one.',
     MAX_REENTRIES_EXCEEDED: 'Maximum number of allowed reentries has been reached for this procedure',
+    REENTRY_MUST_USE_CYCLES_ENDPOINT: 'Re-entry must be performed via the cycles creation endpoint (POST /cycles) with autoTransition=true',
   },
   SUCCESS: {
     DELETED: 'Procedure deleted successfully',
