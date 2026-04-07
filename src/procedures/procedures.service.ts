@@ -631,6 +631,26 @@ export class ProceduresService {
         });
       }
 
+      // Synchronize RAI Number with the Company
+      if (toStatus === ProcedureStatus.CERRADO && procedure.procedureType.code === ProcedureTypeCode.RAI) {
+        if (updateData.approvalCertificate) {
+          const caseFile = await tx.caseFile.findUnique({
+            where: { id: procedure.caseFileId },
+            select: { companyId: true },
+          });
+          if (caseFile) {
+            await tx.company.update({
+              where: { id: caseFile.companyId },
+              data: {
+                raiNumber: updateData.approvalCertificate as string,
+                // Note: emissionDate and expirationDate don't exist in Prisma Company model yet,
+                // so we only update the raiNumber here.
+              },
+            });
+          }
+        }
+      }
+
       return proc;
     });
 
