@@ -221,7 +221,7 @@ export class ProceduresService {
           procedureKind: dto.procedureKind,
           receptionDate: new Date(dto.receptionDate),
           routeSheetNumber: dto.routeSheetNumber ?? null,
-          internalFileNumber: dto.internalFileNumber ?? null,
+          companyStatus: dto.companyStatus ?? null,
           generalNotes: dto.generalNotes ?? null,
           currentStatus: ProcedureStatus.RECIBIDO,
           cycleCount: 0,
@@ -287,7 +287,6 @@ export class ProceduresService {
     if (search) {
       where.OR = [
         { routeSheetNumber: { contains: search, mode: 'insensitive' } },
-        { internalFileNumber: { contains: search, mode: 'insensitive' } },
         { approvalCertificate: { contains: search, mode: 'insensitive' } },
       ];
     }
@@ -356,7 +355,7 @@ export class ProceduresService {
 
     const data: Prisma.ProcedureUpdateInput = {};
     if (dto.routeSheetNumber !== undefined) data.routeSheetNumber = dto.routeSheetNumber;
-    if (dto.internalFileNumber !== undefined) data.internalFileNumber = dto.internalFileNumber;
+    if (dto.companyStatus !== undefined) data.companyStatus = dto.companyStatus;
     if (dto.generalNotes !== undefined) data.generalNotes = dto.generalNotes;
 
     const updated = await this.prisma.procedure.update({

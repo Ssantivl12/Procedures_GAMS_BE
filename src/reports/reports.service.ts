@@ -83,7 +83,6 @@ export class ReportsService {
       expirationDate: p.expirationDate,
       approvalCertificate: p.approvalCertificate,
       routeSheetNumber: p.routeSheetNumber,
-      internalFileNumber: p.internalFileNumber,
       openObservationsCount: p.observations.length,
       assignedInspector: p.assignedInspector
         ? {
@@ -99,7 +98,7 @@ export class ReportsService {
         'procedureType', 'procedureKind', 'currentStatus', 'cycleCount',
         'receptionDate', 'reviewStartDate', 'deadlineDate', 'daysElapsed', 'isOverdue',
         'approvalDate', 'expirationDate', 'approvalCertificate',
-        'routeSheetNumber', 'internalFileNumber', 'openObservationsCount',
+        'routeSheetNumber', 'openObservationsCount',
         'assignedInspector.fullName',
       ]);
     }

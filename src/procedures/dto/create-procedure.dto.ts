@@ -8,7 +8,7 @@ import {
   IsString,
   MaxLength,
 } from 'class-validator';
-import { ProcedureKind } from '@prisma/client';
+import { ProcedureKind, CompanyStatus } from '@prisma/client';
 
 export class CreateProcedureDto {
   @IsUUID()
@@ -18,8 +18,9 @@ export class CreateProcedureDto {
   @IsPositive()
   procedureTypeId: number;
 
+  @IsOptional()
   @IsEnum(ProcedureKind)
-  procedureKind: ProcedureKind;
+  procedureKind?: ProcedureKind;
 
   @IsDateString()
   receptionDate: string;
@@ -30,9 +31,8 @@ export class CreateProcedureDto {
   routeSheetNumber?: string;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(100)
-  internalFileNumber?: string;
+  @IsEnum(CompanyStatus)
+  companyStatus?: CompanyStatus;
 
   @IsOptional()
   @IsString()

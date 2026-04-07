@@ -64,6 +64,13 @@ enum ObservationPriority {
   BAJA
 }
 
+enum CompanyStatus {
+  OPERACION
+  PROYECTO
+  AMPLIACION
+  DIVERSIFICACION
+}
+
 model Role {
   id        String   @id @default(uuid())
   name      RoleName @unique
@@ -246,9 +253,10 @@ model Procedure {
   id              String          @id @default(uuid())
   caseFileId      String
   procedureTypeId Int
-  procedureKind   ProcedureKind
+  procedureKind   ProcedureKind?
   currentStatus   ProcedureStatus @default(RECIBIDO)
   cycleCount      Int             @default(0)
+  companyStatus   CompanyStatus?
 
   receptionDate   DateTime  @db.Date
   reviewStartDate DateTime? @db.Date
@@ -258,7 +266,6 @@ model Procedure {
   daysElapsed         Int?      @default(0)
   isOverdue           Boolean   @default(false)
   routeSheetNumber    String?
-  internalFileNumber  String?
   approvalDate        DateTime? @db.Date
   approvalCertificate String?
   expirationDate      DateTime? @db.Date

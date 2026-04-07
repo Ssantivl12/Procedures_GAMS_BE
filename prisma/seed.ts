@@ -288,7 +288,6 @@ async function main() {
         deadlineDate: opts.deadlineDate ?? null,
         obsPickedDate: opts.obsPickedDate ?? null,
         routeSheetNumber: opts.routeSheetNumber,
-        internalFileNumber: opts.internalFileNumber ?? null,
         generalNotes: opts.generalNotes ?? null,
         isOverdue: opts.isOverdue ?? false,
         assignedInspectorUserId: opts.inspector?.id ?? null,
