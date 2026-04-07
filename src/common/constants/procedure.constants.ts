@@ -102,6 +102,7 @@ export const PROCEDURE_MESSAGES = {
     OPEN_CYCLE_EXISTS: 'There is already an open cycle for this procedure. Close it before creating a new one.',
     MAX_REENTRIES_EXCEEDED: 'Maximum number of allowed reentries has been reached for this procedure',
     REENTRY_MUST_USE_CYCLES_ENDPOINT: 'Re-entry must be performed via the cycles creation endpoint (POST /cycles) with autoTransition=true',
+    CANNOT_CLOSE_WITH_PENDING_OBSERVATIONS: 'Cannot close procedure because there are unresolved observations',
   },
   SUCCESS: {
     DELETED: 'Procedure deleted successfully',

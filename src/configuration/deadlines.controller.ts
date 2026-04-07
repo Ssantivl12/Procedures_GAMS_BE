@@ -19,7 +19,7 @@ import { DeadlinesService } from './deadlines.service';
 import { CreateDeadlineDto } from './dto/create-deadline.dto';
 import { UpdateDeadlineDto } from './dto/update-deadline.dto';
 
-@Controller('config/deadline-config')
+@Controller('config/deadlines')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class DeadlinesController {
   constructor(private readonly service: DeadlinesService) {}

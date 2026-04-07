@@ -484,6 +484,19 @@ export class ProceduresService {
 
       // Conditional field validation
       if (toStatus === ProcedureStatus.CERRADO) {
+        const pendingObsCount = await this.prisma.observation.count({
+          where: {
+            procedureId: id,
+            isResolved: false,
+            isActive: true,
+          },
+        });
+        if (pendingObsCount > 0) {
+          throw new UnprocessableEntityException(
+            PROCEDURE_MESSAGES.ERROR.CANNOT_CLOSE_WITH_PENDING_OBSERVATIONS,
+          );
+        }
+
         if (!dto.approvalDate) {
           throw new UnprocessableEntityException(PROCEDURE_MESSAGES.ERROR.APPROVAL_DATE_REQUIRED);
         }
@@ -604,8 +617,14 @@ export class ProceduresService {
         });
       }
 
-      // Automatically close active cycles on terminal statuses
-      if (toStatus === ProcedureStatus.CERRADO || toStatus === ProcedureStatus.ABANDONADO) {
+      // Automatically close active cycles on specific statuses
+      const statusesThatCloseCycles: ProcedureStatus[] = [
+        ProcedureStatus.CERRADO,
+        ProcedureStatus.ABANDONADO,
+        ProcedureStatus.OBSERVADO_PENDIENTE_RECOJO,
+        ProcedureStatus.SUBSANACION_PENDIENTE_REINGRESO,
+      ];
+      if (statusesThatCloseCycles.includes(toStatus)) {
         await tx.procedureCycle.updateMany({
           where: { procedureId: id, closedAt: null, isActive: true },
           data: { closedAt: new Date() },
@@ -735,10 +754,8 @@ export class ProceduresService {
       throw new ConflictException(PROCEDURE_MESSAGES.ERROR.OPEN_CYCLE_EXISTS);
     }
 
-    // Guard: enforce maxReentriesAllowed
-    if (procedure.reentryCount >= procedure.maxReentriesAllowed) {
-      throw new ConflictException(PROCEDURE_MESSAGES.ERROR.MAX_REENTRIES_EXCEEDED);
-    }
+    // Re-entries are infinite so we do not check max reentries anymore.
+
 
     const newCycleNumber = procedure.cycleCount + 1;
     const reentryDate = new Date(dto.reentryDate);
