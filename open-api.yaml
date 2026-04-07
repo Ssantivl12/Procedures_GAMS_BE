@@ -294,9 +294,15 @@ components:
 
     CreateObservationRequest:
       type: object
-      required: [cycleId, summary]
+      required: [summary]
       properties:
-        cycleId: { type: string, format: uuid }
+        cycleId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            Optional. If omitted, the backend auto-resolves to the currently open cycle
+            of the procedure. Send only if you need to target a specific cycle explicitly.
         summary: { type: string, minLength: 5, maxLength: 500 }
         details: { type: string }
         category: { type: string, enum: [DOCUMENTAL, TECNICA, ADMINISTRATIVA, LEGAL, OTRA] }
@@ -895,7 +901,7 @@ paths:
         '422':
           description: |
             Invalid transition OR
-            attempting OBSERVADO_PENDIENTE_RECOJO with no pending observations in the active cycle
+            attempting OBSERVADO_PENDIENTE_RECOJO with no pending (unresolved) observations for the procedure
 
   /procedures/{id}/assign:
     parameters:

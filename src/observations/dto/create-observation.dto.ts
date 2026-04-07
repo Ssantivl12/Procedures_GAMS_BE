@@ -2,8 +2,10 @@ import { IsUUID, IsString, MinLength, MaxLength, IsOptional, IsEnum } from 'clas
 import { ObservationCategory, ObservationPriority } from '@prisma/client';
 
 export class CreateObservationDto {
+  // Optional: if not provided, the service auto-resolves to the current active cycle.
+  @IsOptional()
   @IsUUID()
-  cycleId: string;
+  cycleId?: string;
 
   @IsString()
   @MinLength(5)

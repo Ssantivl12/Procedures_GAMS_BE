@@ -44,20 +44,33 @@ export class ObservationsService {
       throw new ConflictException(OBSERVATION_MESSAGES.ERROR.PROCEDURE_NOT_IN_REVISION);
     }
 
-    const cycle = await this.prisma.procedureCycle.findFirst({
-      where: { id: dto.cycleId, procedureId, isActive: true },
-    });
-    if (!cycle) {
-      throw new NotFoundException(OBSERVATION_MESSAGES.ERROR.CYCLE_NOT_FOUND);
-    }
-    if (cycle.closedAt !== null) {
-      throw new ConflictException(OBSERVATION_MESSAGES.ERROR.CYCLE_NOT_OPEN);
+    // Resolve the cycle: use the provided cycleId or fall back to the active cycle.
+    let resolvedCycleId = dto.cycleId;
+    if (resolvedCycleId) {
+      const cycle = await this.prisma.procedureCycle.findFirst({
+        where: { id: resolvedCycleId, procedureId, isActive: true },
+      });
+      if (!cycle) {
+        throw new NotFoundException(OBSERVATION_MESSAGES.ERROR.CYCLE_NOT_FOUND);
+      }
+      if (cycle.closedAt !== null) {
+        throw new ConflictException(OBSERVATION_MESSAGES.ERROR.CYCLE_NOT_OPEN);
+      }
+    } else {
+      const activeCycle = await this.prisma.procedureCycle.findFirst({
+        where: { procedureId, closedAt: null, isActive: true },
+        orderBy: { cycleNumber: 'desc' },
+      });
+      if (!activeCycle) {
+        throw new NotFoundException(OBSERVATION_MESSAGES.ERROR.CYCLE_NOT_FOUND);
+      }
+      resolvedCycleId = activeCycle.id;
     }
 
     const observation = await this.prisma.observation.create({
       data: {
         procedureId,
-        cycleId: dto.cycleId,
+        cycleId: resolvedCycleId,
         summary: dto.summary,
         details: dto.details ?? null,
         category: dto.category ?? null,
@@ -71,7 +84,7 @@ export class ObservationsService {
     await this.auditService.log({
       action: OBSERVATION_AUDIT_ACTIONS.CREATED,
       userId,
-      details: { observationId: observation.id, procedureId, cycleId: dto.cycleId },
+      details: { observationId: observation.id, procedureId, cycleId: resolvedCycleId },
     });
 
     return observation;

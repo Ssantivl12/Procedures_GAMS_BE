@@ -123,26 +123,16 @@ export class ProceduresService {
 
   /**
    * Looks up the deadline in days for a given procedure type and cycle count.
-   * cycleCount is the value BEFORE incrementing (matches DeadlineConfig.cycleNumber).
-   * Falls back to the highest configured re-entry deadline if no exact match.
+   * cycleCount is the value BEFORE incrementing (matches DeadlineConfig.cycleNumber:
+   *   0 = first review, 1 = all reentries).
+   * Uses the in-memory cache from ConfigCacheService.
    */
-  private async getDeadlineDays(
+  private getDeadlineDays(
     typeCode: ProcedureTypeCode,
     cycleCount: number,
-  ): Promise<number | null> {
-    let config = await this.prisma.deadlineConfig.findFirst({
-      where: { procedureType: typeCode, cycleNumber: cycleCount, isActive: true },
-    });
-
-    // If no exact match for a re-entry cycle, fall back to the highest configured re-entry
-    if (!config && cycleCount > 0) {
-      config = await this.prisma.deadlineConfig.findFirst({
-        where: { procedureType: typeCode, cycleNumber: { gt: 0 }, isActive: true },
-        orderBy: { cycleNumber: 'desc' },
-      });
-    }
-
-    return config?.deadlineDays ?? null;
+  ): number | null {
+    // cache.getDeadlineDays maps: 0 → configKey 0, any >0 → configKey 1
+    return this.cache.getDeadlineDays(typeCode, cycleCount) ?? null;
   }
 
   // ---------------------------------------------------------------------------
@@ -476,16 +466,11 @@ export class ProceduresService {
         throw new ForbiddenException(PROCEDURE_MESSAGES.ERROR.FORBIDDEN_TRANSITION);
       }
 
-      // EN_REVISION → OBSERVADO requires at least 1 pending observation in the active cycle
+      // EN_REVISION → OBSERVADO requires at least 1 pending observation for the procedure
       if (toStatus === ProcedureStatus.OBSERVADO_PENDIENTE_RECOJO) {
-        const activeCycle = await this.prisma.procedureCycle.findFirst({
-          where: { procedureId: id, closedAt: null, isActive: true },
-          orderBy: { cycleNumber: 'desc' },
-        });
         const pendingObsCount = await this.prisma.observation.count({
           where: {
             procedureId: id,
-            ...(activeCycle ? { cycleId: activeCycle.id } : {}),
             isResolved: false,
             isActive: true,
           },
@@ -532,7 +517,7 @@ export class ProceduresService {
       // obsPickedDate is validated above as required for this transition
       const pickDate = new Date(dto.obsPickedDate!);
       // Use DeadlineConfig for cycle 1 (re-entry) as the subsanation deadline
-      const subsanDays = await this.getDeadlineDays(procedure.procedureType.code, 1);
+      const subsanDays = this.getDeadlineDays(procedure.procedureType.code, 1);
       if (subsanDays !== null) {
         updateData.deadlineDate = this.cache.addWorkingDays(pickDate, subsanDays);
       }
@@ -563,7 +548,7 @@ export class ProceduresService {
     // Calculate deadlineDate for all EN_REVISION entries
     let deadlineDate: Date | null = null;
     if (toStatus === ProcedureStatus.EN_REVISION && dto.reviewStartDate) {
-      const deadlineDays = await this.getDeadlineDays(
+      const deadlineDays = this.getDeadlineDays(
         procedure.procedureType.code,
         procedure.cycleCount, // value before increment
       );
@@ -761,7 +746,7 @@ export class ProceduresService {
     const reviewStart = dto.reviewStartDate ? new Date(dto.reviewStartDate) : reentryDate;
 
     // Calculate reviewDeadline using DeadlineConfig
-    const deadlineDays = await this.getDeadlineDays(
+    const deadlineDays = this.getDeadlineDays(
       procedure.procedureType.code,
       procedure.cycleCount, // before increment
     );
