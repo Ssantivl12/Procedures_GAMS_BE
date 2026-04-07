@@ -86,6 +86,9 @@ export class CasesService {
         total: procedures.length,
         active,
         closed,
+        closedProcedureCodes: procedures
+          .filter((p: any) => p.currentStatus === ProcedureStatus.CERRADO)
+          .map((p: any) => p.procedureType?.code),
       },
     };
   }

@@ -167,17 +167,43 @@ export class ProceduresService {
     // 3. Category compatibility
     this.validateCategoryCompatibility(procedureType.code, caseFile.company.category);
 
-    // 4. IAA requires a closed MAI_PMA in the same case file
-    if (procedureType.code === ProcedureTypeCode.IAA) {
-      const maiPmaClosed = await this.prisma.procedure.findFirst({
+    // 4. RAI requirement for MAI_PMA
+    if (procedureType.code === ProcedureTypeCode.MAI_PMA) {
+      const raiClosed = await this.prisma.procedure.findFirst({
         where: {
           caseFileId: dto.caseFileId,
-          procedureType: { code: ProcedureTypeCode.MAI_PMA },
+          procedureType: { code: ProcedureTypeCode.RAI },
           currentStatus: ProcedureStatus.CERRADO,
           isActive: true,
         },
       });
-      if (!maiPmaClosed) {
+      if (!raiClosed) {
+        throw new ConflictException(PROCEDURE_MESSAGES.ERROR.MAI_PMA_REQUIRES_RAI);
+      }
+    }
+
+    // 5. RAI and MAI_PMA requirement for IAA
+    if (procedureType.code === ProcedureTypeCode.IAA) {
+      const [raiClosed, maiPmaClosed] = await Promise.all([
+        this.prisma.procedure.findFirst({
+          where: {
+            caseFileId: dto.caseFileId,
+            procedureType: { code: ProcedureTypeCode.RAI },
+            currentStatus: ProcedureStatus.CERRADO,
+            isActive: true,
+          },
+        }),
+        this.prisma.procedure.findFirst({
+          where: {
+            caseFileId: dto.caseFileId,
+            procedureType: { code: ProcedureTypeCode.MAI_PMA },
+            currentStatus: ProcedureStatus.CERRADO,
+            isActive: true,
+          },
+        }),
+      ]);
+
+      if (!raiClosed || !maiPmaClosed) {
         throw new ConflictException(PROCEDURE_MESSAGES.ERROR.IAA_REQUIRES_MAI_PMA);
       }
     }
@@ -288,6 +314,7 @@ export class ProceduresService {
       where.OR = [
         { routeSheetNumber: { contains: search, mode: 'insensitive' } },
         { approvalCertificate: { contains: search, mode: 'insensitive' } },
+        { caseFile: { company: { legalName: { contains: search, mode: 'insensitive' } } } },
       ];
     }
 
