@@ -25,8 +25,6 @@ import {
   ABANDON_ROLES,
   REACTIVATE_ROLES,
   ACTIVE_PROCEDURE_STATUSES_SET,
-  SUBSANATION_DEADLINE_DAYS,
-  SUBSANATION_DEADLINE_DAYS_DEFAULT,
 } from '../common/constants/procedure.constants';
 
 @Injectable()
@@ -95,8 +93,16 @@ export class ProceduresService {
   }
 
   private buildResponse(procedure: any) {
+    let daysElapsed = procedure.daysElapsed;
+    
+    // Dynamic calculation of daysElapsed for active reviews
+    if (procedure.reviewStartDate && !procedure.closedAt && procedure.currentStatus === ProcedureStatus.EN_REVISION) {
+      daysElapsed = this.cache.countWorkingDays(new Date(procedure.reviewStartDate), new Date());
+    }
+
     return {
       ...procedure,
+      daysElapsed,
       raiStatus: this.computeRaiStatus(procedure),
       isOverdue: this.computeIsOverdue(procedure),
     };
@@ -525,9 +531,11 @@ export class ProceduresService {
     if (toStatus === ProcedureStatus.SUBSANACION_PENDIENTE_REINGRESO) {
       // obsPickedDate is validated above as required for this transition
       const pickDate = new Date(dto.obsPickedDate!);
-      const subsanDays =
-        SUBSANATION_DEADLINE_DAYS[procedure.procedureType.code] ?? SUBSANATION_DEADLINE_DAYS_DEFAULT;
-      updateData.deadlineDate = this.cache.addWorkingDays(pickDate, subsanDays);
+      // Use DeadlineConfig for cycle 1 (re-entry) as the subsanation deadline
+      const subsanDays = await this.getDeadlineDays(procedure.procedureType.code, 1);
+      if (subsanDays !== null) {
+        updateData.deadlineDate = this.cache.addWorkingDays(pickDate, subsanDays);
+      }
       updateData.isOverdue = false;
     }
     if (dto.reviewStartDate) {
@@ -608,6 +616,14 @@ export class ProceduresService {
             reentryDate: null,
             reviewDeadline: deadlineDate,
           },
+        });
+      }
+
+      // Automatically close active cycles on terminal statuses
+      if (toStatus === ProcedureStatus.CERRADO || toStatus === ProcedureStatus.ABANDONADO) {
+        await tx.procedureCycle.updateMany({
+          where: { procedureId: id, closedAt: null, isActive: true },
+          data: { closedAt: new Date() },
         });
       }
 
@@ -768,9 +784,12 @@ export class ProceduresService {
       const updateData: Prisma.ProcedureUpdateInput = {
         cycleCount: { increment: 1 },
         reentryCount: { increment: 1 },
-        deadlineDate: reviewDeadline,
         isOverdue: false,
       };
+
+      if (reviewDeadline !== null) {
+        updateData.deadlineDate = reviewDeadline;
+      }
 
       if (dto.autoTransition) {
         updateData.currentStatus = ProcedureStatus.EN_REVISION;
