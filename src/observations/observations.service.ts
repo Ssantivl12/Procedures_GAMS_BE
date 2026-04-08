@@ -154,6 +154,12 @@ export class ObservationsService {
       (a, b) => (a.cycleNumber ?? 0) - (b.cycleNumber ?? 0),
     );
 
+    const observationsSummary = {
+      total: allObs.length,
+      pending: allObs.filter(o => !o.isResolved).length,
+      resolved: allObs.filter(o => o.isResolved).length,
+    };
+
     return {
       data: items,
       meta: {
@@ -165,6 +171,7 @@ export class ObservationsService {
         hasPreviousPage: pageNum > 1,
       },
       groupedByCycle,
+      observationsSummary,
     };
   }
 

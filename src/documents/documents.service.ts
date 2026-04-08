@@ -139,12 +139,14 @@ export class DocumentsService {
     // 8. Versioning transaction: mark previous isLatest=false + insert new
     const doc = await this.prisma.$transaction(async (tx) => {
       // Mark previous latest as superseded
-      if (maxVersionDoc) {
-        await tx.document.update({
-          where: { id: maxVersionDoc.id },
-          data: { isLatest: false, replacedById: newDocId },
-        });
-      }
+      // Allow multiple files per group by NOT marking previous as isLatest=false.
+      // Every file uploaded remains visible for its group.
+      // if (maxVersionDoc) {
+      //   await tx.document.update({
+      //     where: { id: maxVersionDoc.id },
+      //     data: { isLatest: false, replacedById: newDocId },
+      //   });
+      // }
 
       return tx.document.create({
         data: {
@@ -185,9 +187,8 @@ export class DocumentsService {
     const {
       cycleId,
       docGroup,
-      isLatest = true,
       page = 1,
-      limit = 20,
+      limit = 50,
     } = query;
 
     const pageNum = Number(page);
@@ -199,7 +200,6 @@ export class DocumentsService {
       isActive: true,
       ...(cycleId ? { cycleId } : {}),
       ...(docGroup ? { docGroup } : {}),
-      ...(isLatest !== undefined ? { isLatest } : {}),
     };
 
     const [docs, total] = await Promise.all([
