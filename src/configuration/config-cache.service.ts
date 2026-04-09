@@ -58,9 +58,10 @@ export class ConfigCacheService implements OnModuleInit {
 
   /**
    * Returns true if the given date is a non-working day (holiday) or weekend.
+   * Uses UTC methods throughout to avoid timezone-shift bugs.
    */
   isNonWorkingDay(date: Date): boolean {
-    const day = date.getDay(); // 0 = Sunday, 6 = Saturday
+    const day = date.getUTCDay(); // 0 = Sunday, 6 = Saturday (UTC)
     if (day === 0 || day === 6) return true;
     return this.nonWorkingDays.has(this.toDateString(date));
   }
@@ -68,26 +69,28 @@ export class ConfigCacheService implements OnModuleInit {
   /**
    * Counts working days between two dates (exclusive of start, inclusive of end).
    * Saturdays, Sundays, and registered non-working days are skipped.
+   * Uses UTC methods to avoid timezone-shift bugs.
    */
   countWorkingDays(from: Date, to: Date): number {
     let count = 0;
     const current = new Date(from);
-    current.setDate(current.getDate() + 1); // start counting from next day
+    current.setUTCDate(current.getUTCDate() + 1); // start counting from next day
     while (current <= to) {
       if (!this.isNonWorkingDay(current)) count++;
-      current.setDate(current.getDate() + 1);
+      current.setUTCDate(current.getUTCDate() + 1);
     }
     return count;
   }
 
   /**
    * Adds the given number of working days to a date, skipping non-working days.
+   * Uses UTC methods to avoid timezone-shift bugs.
    */
   addWorkingDays(from: Date, days: number): Date {
     const result = new Date(from);
     let added = 0;
     while (added < days) {
-      result.setDate(result.getDate() + 1);
+      result.setUTCDate(result.getUTCDate() + 1);
       if (!this.isNonWorkingDay(result)) added++;
     }
     return result;

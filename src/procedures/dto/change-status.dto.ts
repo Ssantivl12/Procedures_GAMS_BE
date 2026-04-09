@@ -28,9 +28,8 @@ export class ChangeStatusDto {
   @IsDateString()
   obsPickedDate?: string;
 
-  // Required when toStatus = EN_REVISION
-  @ValidateIf((o) => o.toStatus === ProcedureStatus.EN_REVISION)
-  @IsNotEmpty()
+  // Optional metadata when toStatus = EN_REVISION (no longer drives deadline calculation)
+  @IsOptional()
   @IsDateString()
   reviewStartDate?: string;
 

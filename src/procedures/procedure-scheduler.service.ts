@@ -30,22 +30,45 @@ export class ProcedureSchedulerService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Only active, non-terminal procedures that have started review
+    // All active, non-terminal procedures (clock starts at receptionDate for cycle 1)
     const procedures = await this.prisma.procedure.findMany({
       where: {
         isActive: true,
         currentStatus: {
           notIn: [ProcedureStatus.CERRADO, ProcedureStatus.ABANDONADO],
         },
-        reviewStartDate: { not: null },
       },
-      select: { id: true, reviewStartDate: true, deadlineDate: true },
+      select: {
+        id: true,
+        currentStatus: true,
+        cycleCount: true,
+        receptionDate: true,
+        reviewStartDate: true,
+        obsPickedDate: true,
+        deadlineDate: true,
+      },
     });
 
     let updated = 0;
 
     for (const p of procedures) {
-      const daysElapsed = this.cache.countWorkingDays(p.reviewStartDate!, today);
+      // Mirror the same logic as buildResponse
+      let daysElapsed = 0;
+      if (
+        (p.currentStatus === ProcedureStatus.RECIBIDO ||
+          p.currentStatus === ProcedureStatus.EN_REVISION) &&
+        p.cycleCount <= 1
+      ) {
+        daysElapsed = this.cache.countWorkingDays(p.receptionDate, today);
+      } else if (p.currentStatus === ProcedureStatus.EN_REVISION && p.reviewStartDate) {
+        daysElapsed = this.cache.countWorkingDays(p.reviewStartDate, today);
+      } else if (
+        p.currentStatus === ProcedureStatus.SUBSANACION_PENDIENTE_REINGRESO &&
+        p.obsPickedDate
+      ) {
+        daysElapsed = this.cache.countWorkingDays(p.obsPickedDate, today);
+      }
+
       const isOverdue = p.deadlineDate != null && today > p.deadlineDate;
 
       await this.prisma.procedure.update({
