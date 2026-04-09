@@ -1,0 +1,125 @@
+openapi: "3.0.3"
+info:
+  title: Documents (Documentos)
+  version: "1.0"
+tags:
+  - name: documents
+
+security:
+  - bearerAuth: []
+
+paths:
+  /procedures/{procedureId}/documents:
+    post:
+      tags: [documents]
+      summary: Subir documento (PDF)
+      description: |
+        Todos los roles. Multipart form-data.
+        Tamaño máximo: UPLOAD_MAX_SIZE_MB (default 20 MB).
+        Tipos permitidos: UPLOAD_ALLOWED_TYPES (default application/pdf).
+        El versionado es por (procedureId + docGroup): si ya existe un documento
+        del mismo grupo, el nuevo se marca como isLatest=true y el anterior isLatest=false.
+      parameters:
+        - { name: procedureId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, docGroup]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                docGroup:
+                  type: string
+                  enum: [INGRESO, ANEXO, OBSERVACIONES, REINGRESO, ACTA, INFORME, RESULTADO_FINAL, OTRO]
+                cycleId:
+                  type: string
+                  format: uuid
+                  description: Opcional. Vincula el documento a un ciclo específico.
+                description:
+                  type: string
+                  maxLength: 500
+      responses:
+        "201":
+          description: Documento subido
+        "400":
+          description: Tipo de archivo no permitido o tamaño excedido
+
+    get:
+      tags: [documents]
+      summary: Listar documentos de un trámite
+      description: Todos los roles.
+      parameters:
+        - { name: procedureId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: docGroup, in: query, schema: { type: string, enum: [INGRESO, ANEXO, OBSERVACIONES, REINGRESO, ACTA, INFORME, RESULTADO_FINAL, OTRO] } }
+        - { name: cycleId, in: query, schema: { type: string, format: uuid } }
+        - { name: isLatest, in: query, schema: { type: boolean } }
+      responses:
+        "200":
+          description: Lista de metadatos de documentos
+
+  /procedures/{procedureId}/documents/{id}:
+    get:
+      tags: [documents]
+      summary: Obtener metadatos de un documento
+      description: Todos los roles.
+      parameters:
+        - { name: procedureId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Metadatos del documento
+        "404":
+          description: No encontrado
+
+    delete:
+      tags: [documents]
+      summary: Eliminar documento (soft delete)
+      description: Solo SUPERADMIN.
+      parameters:
+        - { name: procedureId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Eliminado
+
+  /procedures/{procedureId}/documents/{id}/download:
+    get:
+      tags: [documents]
+      summary: Descargar documento
+      description: Todos los roles. Devuelve el archivo como stream con Content-Type y Content-Disposition.
+      parameters:
+        - { name: procedureId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Archivo PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Archivo no encontrado en disco
+
+  /procedures/{procedureId}/documents/{id}/versions:
+    get:
+      tags: [documents]
+      summary: Historial de versiones de un documento
+      description: Todos los roles. Devuelve todas las versiones del mismo docGroup.
+      parameters:
+        - { name: procedureId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Lista de versiones ordenadas por version desc
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

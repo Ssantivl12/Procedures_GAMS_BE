@@ -1,0 +1,156 @@
+openapi: "3.0.3"
+info:
+  title: Case Files (Expedientes)
+  version: "1.0"
+tags:
+  - name: case-files
+
+security:
+  - bearerAuth: []
+
+paths:
+  /case-files:
+    post:
+      tags: [case-files]
+      summary: Crear expediente
+      description: |
+        Roles: SUPERADMIN, ENCARGADO, SECRETARIA.
+        Cada empresa puede tener solo un expediente. El código se genera automáticamente (EXP-YYYY-NNNNN).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [companyId]
+              properties:
+                companyId:
+                  type: string
+                  format: uuid
+                fileNumber:
+                  type: string
+                  description: Número de expediente físico (opcional, único).
+      responses:
+        "201":
+          description: Expediente creado
+        "404":
+          description: Empresa no encontrada o inactiva
+        "409":
+          description: La empresa ya tiene un expediente, o fileNumber duplicado
+
+    get:
+      tags: [case-files]
+      summary: Listar expedientes
+      description: Todos los roles.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, default: 10 } }
+        - { name: search, in: query, schema: { type: string }, description: "Busca en code, fileNumber, company.legalName, company.raiNumber" }
+        - { name: status, in: query, schema: { type: string, enum: [open, closed] } }
+        - { name: category, in: query, schema: { type: string, enum: [C3, C4] } }
+        - { name: isActive, in: query, schema: { type: boolean, default: true } }
+      responses:
+        "200":
+          description: Lista paginada con raiStatus calculado y proceduresSummary
+
+  /case-files/company/{companyId}:
+    get:
+      tags: [case-files]
+      summary: Obtener expediente por empresa
+      description: Todos los roles.
+      parameters:
+        - { name: companyId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Expediente de la empresa
+        "404":
+          description: No encontrado
+
+  /case-files/{id}:
+    get:
+      tags: [case-files]
+      summary: Obtener expediente por ID
+      description: Todos los roles.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Expediente con raiStatus y proceduresSummary
+        "404":
+          description: No encontrado
+
+    patch:
+      tags: [case-files]
+      summary: Actualizar expediente
+      description: Roles&#58; SUPERADMIN, ENCARGADO. Solo permite actualizar fileNumber.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fileNumber: { type: string }
+      responses:
+        "200":
+          description: Actualizado
+
+    delete:
+      tags: [case-files]
+      summary: Eliminar expediente (soft delete)
+      description: Solo SUPERADMIN. Solo si no tiene trámites asociados.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Eliminado
+        "409":
+          description: Tiene trámites asociados
+
+  /case-files/{id}/close:
+    patch:
+      tags: [case-files]
+      summary: Cerrar expediente
+      description: Roles&#58; SUPERADMIN, ENCARGADO. No puede tener trámites activos.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Cerrado
+        "409":
+          description: Tiene trámites activos
+
+  /case-files/{id}/reopen:
+    patch:
+      tags: [case-files]
+      summary: Reabrir expediente
+      description: Solo SUPERADMIN.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Reabierto
+
+  /case-files/{caseFileId}/procedures:
+    get:
+      tags: [case-files]
+      summary: Listar trámites de un expediente
+      description: Todos los roles. Acepta los mismos query params que GET /procedures.
+      parameters:
+        - { name: caseFileId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, default: 10 } }
+        - { name: procedureTypeCode, in: query, schema: { type: string, enum: [RAI, MAI_PMA, IAA, CIERRE] } }
+        - { name: status, in: query, schema: { type: string, enum: [RECIBIDO, EN_REVISION, OBSERVADO_PENDIENTE_RECOJO, SUBSANACION_PENDIENTE_REINGRESO, CERRADO, ABANDONADO] } }
+        - { name: isOverdue, in: query, schema: { type: boolean } }
+      responses:
+        "200":
+          description: Lista paginada de trámites
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

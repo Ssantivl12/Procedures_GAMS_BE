@@ -1,0 +1,320 @@
+openapi: "3.0.3"
+info:
+  title: Procedures (Trámites)
+  version: "1.0"
+tags:
+  - name: procedures
+  - name: cycles
+
+security:
+  - bearerAuth: []
+
+paths:
+  /procedures:
+    post:
+      tags: [procedures]
+      summary: Crear trámite
+      description: |
+        Roles: SUPERADMIN, ENCARGADO, SECRETARIA.
+        Validaciones de negocio en creación:
+        - MAI_PMA requiere RAI cerrado en el expediente.
+        - IAA requiere RAI y MAI_PMA cerrados.
+        - RENOVACION requiere un trámite del mismo tipo cerrado.
+        - No puede haber un trámite activo del mismo tipo en el expediente.
+        - MAI_PMA e IAA no están permitidos para empresas C4.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProcedureDto"
+      responses:
+        "201":
+          description: Trámite creado en estado RECIBIDO. deadlineDate calculado desde receptionDate.
+        "404":
+          description: Expediente o tipo de trámite no encontrado
+        "409":
+          description: Restricción de negocio (ver descripción)
+
+    get:
+      tags: [procedures]
+      summary: Listar trámites
+      description: Todos los roles.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, default: 10, maximum: 50 } }
+        - { name: caseFileId, in: query, schema: { type: string, format: uuid } }
+        - { name: procedureTypeCode, in: query, schema: { type: string, enum: [RAI, MAI_PMA, IAA, CIERRE] } }
+        - { name: procedureKind, in: query, schema: { type: string, enum: [NUEVO, RENOVACION] } }
+        - { name: status, in: query, schema: { type: string, enum: [RECIBIDO, EN_REVISION, OBSERVADO_PENDIENTE_RECOJO, SUBSANACION_PENDIENTE_REINGRESO, CERRADO, ABANDONADO] } }
+        - { name: assignedInspectorId, in: query, schema: { type: string, format: uuid } }
+        - { name: isOverdue, in: query, schema: { type: boolean } }
+        - { name: search, in: query, schema: { type: string, minLength: 2 }, description: "Busca en routeSheetNumber, approvalCertificate, company.legalName" }
+      responses:
+        "200":
+          description: Lista paginada. Cada ítem incluye deadlineDate, daysElapsed, daysRemaining, isOverdue calculados en tiempo real.
+
+  /procedures/{id}:
+    get:
+      tags: [procedures]
+      summary: Obtener trámite por ID
+      description: Todos los roles. Incluye observationsSummary y raiStatus.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Trámite con plazos calculados en tiempo real
+        "404":
+          description: No encontrado
+
+    patch:
+      tags: [procedures]
+      summary: Actualizar campos editables
+      description: |
+        Roles: SUPERADMIN, ENCARGADO.
+        Solo permite editar: routeSheetNumber, companyStatus, generalNotes.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                routeSheetNumber: { type: string, maxLength: 100 }
+                companyStatus:
+                  type: string
+                  enum: [OPERACION, PROYECTO, AMPLIACION, DIVERSIFICACION]
+                generalNotes: { type: string }
+      responses:
+        "200":
+          description: Actualizado
+
+    delete:
+      tags: [procedures]
+      summary: Eliminar trámite (soft delete)
+      description: Solo SUPERADMIN. Solo si está en CERRADO o ABANDONADO.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Eliminado
+        "409":
+          description: El trámite está en un estado activo
+
+  /procedures/{id}/status:
+    patch:
+      tags: [procedures]
+      summary: Cambiar estado del trámite
+      description: |
+        Transiciones válidas (ver docs/domain/workflow.md para detalle completo):
+        - RECIBIDO → EN_REVISION (INSPECTOR, ENCARGADO, SUPERADMIN)
+        - EN_REVISION → OBSERVADO_PENDIENTE_RECOJO (INSPECTOR, ENCARGADO, SUPERADMIN) — requiere ≥1 observación pendiente
+        - EN_REVISION → CERRADO (INSPECTOR, ENCARGADO, SUPERADMIN) — requiere approvalDate, approvalCertificate; expirationDate si es RAI
+        - OBSERVADO → SUBSANACION (SECRETARIA, ENCARGADO, SUPERADMIN) — requiere obsPickedDate
+        - Cualquier activo → ABANDONADO (todos) — requiere abandonReason
+        - ABANDONADO → estado anterior (solo ENCARGADO, SUPERADMIN) — restaura automáticamente el estado previo
+
+        **CRÍTICO**: SUBSANACION → EN_REVISION NO se puede hacer aquí. Usar POST /procedures/{id}/cycles con autoTransition=true.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeStatusDto"
+      responses:
+        "200":
+          description: Estado actualizado
+        "403":
+          description: Rol no autorizado para esta transición
+        "422":
+          description: Transición inválida o campo requerido faltante
+
+  /procedures/{id}/assign:
+    patch:
+      tags: [procedures]
+      summary: Asignar inspector
+      description: Roles&#58; SUPERADMIN, ENCARGADO.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [inspectorUserId]
+              properties:
+                inspectorUserId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Inspector asignado
+        "403":
+          description: El usuario no tiene rol de inspector válido
+
+  /procedures/{id}/audit:
+    get:
+      tags: [procedures]
+      summary: Historial de cambios de estado
+      description: Todos los roles. Devuelve ProcedureAudit ordenado por fecha.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Lista de entradas de auditoría
+
+  /procedures/{id}/cycles:
+    post:
+      tags: [cycles]
+      summary: Crear ciclo de reingreso
+      description: |
+        Roles: SUPERADMIN, ENCARGADO, SECRETARIA.
+        Con autoTransition=true: el trámite debe estar en SUBSANACION_PENDIENTE_REINGRESO.
+        Este es el único mecanismo para la transición SUBSANACION → EN_REVISION.
+        Incrementa cycleCount y reentryCount. Recalcula deadlineDate.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCycleDto"
+      responses:
+        "201":
+          description: Ciclo creado
+        "409":
+          description: Ya existe un ciclo abierto
+        "422":
+          description: autoTransition=true pero trámite no está en SUBSANACION
+
+    get:
+      tags: [cycles]
+      summary: Listar ciclos del trámite
+      description: Todos los roles.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Lista de ciclos ordenados por cycleNumber
+
+  /procedures/{id}/cycles/{cycleId}:
+    get:
+      tags: [cycles]
+      summary: Obtener ciclo por ID
+      description: Todos los roles.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: cycleId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Ciclo encontrado
+
+  /procedures/{id}/cycles/{cycleId}/close:
+    patch:
+      tags: [cycles]
+      summary: Cerrar ciclo manualmente
+      description: Roles&#58; SUPERADMIN, ENCARGADO, INSPECTOR.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: cycleId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note: { type: string }
+      responses:
+        "200":
+          description: Ciclo cerrado
+        "409":
+          description: El ciclo ya está cerrado
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    CreateProcedureDto:
+      type: object
+      required: [caseFileId, procedureTypeId, receptionDate]
+      properties:
+        caseFileId:
+          type: string
+          format: uuid
+        procedureTypeId:
+          type: integer
+          description: "ID del ProcedureType (ver GET /config/procedure-types)"
+        procedureKind:
+          type: string
+          enum: [NUEVO, RENOVACION]
+        receptionDate:
+          type: string
+          format: date
+          description: Fecha de recepción administrativa. El reloj de plazos inicia desde aquí.
+        routeSheetNumber:
+          type: string
+          maxLength: 100
+        companyStatus:
+          type: string
+          enum: [OPERACION, PROYECTO, AMPLIACION, DIVERSIFICACION]
+          description: RAI+PROYECTO usa plazo de 10 días en primera revisión en lugar de 5.
+        generalNotes:
+          type: string
+
+    ChangeStatusDto:
+      type: object
+      required: [toStatus]
+      properties:
+        toStatus:
+          type: string
+          enum: [RECIBIDO, EN_REVISION, OBSERVADO_PENDIENTE_RECOJO, SUBSANACION_PENDIENTE_REINGRESO, CERRADO, ABANDONADO]
+        note:
+          type: string
+        abandonReason:
+          type: string
+          description: Requerido si toStatus=ABANDONADO
+        obsPickedDate:
+          type: string
+          format: date
+          description: Requerido si toStatus=SUBSANACION_PENDIENTE_REINGRESO
+        reviewStartDate:
+          type: string
+          format: date
+          description: Opcional al ir a EN_REVISION (metadata, no afecta el reloj)
+        approvalDate:
+          type: string
+          format: date
+          description: Requerido si toStatus=CERRADO
+        approvalCertificate:
+          type: string
+          description: Requerido si toStatus=CERRADO. Para RAI se copia a Company.raiNumber.
+        expirationDate:
+          type: string
+          format: date
+          description: Requerido si toStatus=CERRADO y tipo=RAI
+
+    CreateCycleDto:
+      type: object
+      required: [reentryDate, autoTransition]
+      properties:
+        reentryDate:
+          type: string
+          format: date
+        reviewStartDate:
+          type: string
+          format: date
+          description: Si se omite, defaults a reentryDate.
+        autoTransition:
+          type: boolean
+          description: Si true, transiciona automáticamente el trámite a EN_REVISION.
+        note:
+          type: string

@@ -1,0 +1,135 @@
+openapi: "3.0.3"
+info:
+  title: Users
+  version: "1.0"
+tags:
+  - name: users
+
+security:
+  - bearerAuth: []
+
+paths:
+  /users:
+    post:
+      tags: [users]
+      summary: Crear usuario
+      description: Solo SUPERADMIN.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserDto"
+      responses:
+        "201":
+          description: Usuario creado
+        "409":
+          description: Email ya registrado
+
+    get:
+      tags: [users]
+      summary: Listar usuarios
+      description: Roles&#58; SUPERADMIN, ENCARGADO.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, default: 10, maximum: 50 } }
+        - { name: search, in: query, schema: { type: string } }
+        - { name: role, in: query, schema: { type: string, enum: [SUPERADMIN, ENCARGADO, SECRETARIA, INSPECTOR] } }
+        - { name: isActive, in: query, schema: { type: boolean } }
+      responses:
+        "200":
+          description: Lista paginada de usuarios
+
+  /users/me:
+    get:
+      tags: [users]
+      summary: Obtener usuario autenticado
+      description: Todos los roles.
+      responses:
+        "200":
+          description: Datos del usuario actual
+
+  /users/inspectors:
+    get:
+      tags: [users]
+      summary: Listar inspectores activos
+      description: Roles&#58; SUPERADMIN, ENCARGADO. Usado para el selector de asignación.
+      responses:
+        "200":
+          description: Lista de usuarios con rol INSPECTOR (+ ENCARGADO y SUPERADMIN)
+
+  /users/{id}:
+    get:
+      tags: [users]
+      summary: Obtener usuario por ID
+      description: Solo SUPERADMIN.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Usuario encontrado
+        "404":
+          description: No encontrado
+
+    patch:
+      tags: [users]
+      summary: Actualizar usuario
+      description: Solo SUPERADMIN.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firstName: { type: string }
+                lastName: { type: string }
+                roles:
+                  type: array
+                  items:
+                    type: string
+                    enum: [SUPERADMIN, ENCARGADO, SECRETARIA, INSPECTOR]
+                isActive: { type: boolean }
+      responses:
+        "200":
+          description: Usuario actualizado
+
+    delete:
+      tags: [users]
+      summary: Eliminar usuario (soft delete)
+      description: Solo SUPERADMIN.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Eliminado
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    CreateUserDto:
+      type: object
+      required: [email, password, firstName, lastName, roles]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+          description: Debe cumplir regex de complejidad (letras + números).
+        firstName:
+          type: string
+        lastName:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [SUPERADMIN, ENCARGADO, SECRETARIA, INSPECTOR]

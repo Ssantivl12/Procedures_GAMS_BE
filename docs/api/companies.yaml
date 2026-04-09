@@ -1,0 +1,213 @@
+openapi: "3.0.3"
+info:
+  title: Companies
+  version: "1.0"
+tags:
+  - name: companies
+
+security:
+  - bearerAuth: []
+
+paths:
+  /companies:
+    post:
+      tags: [companies]
+      summary: Crear empresa
+      description: Roles&#58; SUPERADMIN, ENCARGADO, SECRETARIA.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCompanyDto"
+      responses:
+        "201":
+          description: Empresa creada
+        "409":
+          description: NIT ya registrado
+
+    get:
+      tags: [companies]
+      summary: Listar empresas
+      description: Todos los roles.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, default: 10 } }
+        - { name: search, in: query, schema: { type: string }, description: "Busca en legalName, nit, raiNumber" }
+        - { name: category, in: query, schema: { type: string, enum: [C3, C4] } }
+        - { name: municipality, in: query, schema: { type: string } }
+        - { name: geoZone, in: query, schema: { type: string, enum: [Urbano, Rural] } }
+        - { name: hasRaiNumber, in: query, schema: { type: boolean } }
+        - { name: isActive, in: query, schema: { type: boolean } }
+        - { name: sortBy, in: query, schema: { type: string, default: legalName } }
+        - { name: sortOrder, in: query, schema: { type: string, enum: [asc, desc], default: asc } }
+      responses:
+        "200":
+          description: Lista paginada
+
+  /companies/{id}:
+    get:
+      tags: [companies]
+      summary: Obtener empresa por ID
+      description: Todos los roles.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: include, in: query, schema: { type: string, enum: [caseFile] }, description: "Incluir expediente en la respuesta" }
+      responses:
+        "200":
+          description: Empresa encontrada
+        "404":
+          description: No encontrada
+
+    patch:
+      tags: [companies]
+      summary: Actualizar empresa
+      description: Roles&#58; SUPERADMIN, ENCARGADO, SECRETARIA.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCompanyDto"
+      responses:
+        "200":
+          description: Empresa actualizada
+
+    delete:
+      tags: [companies]
+      summary: Eliminar empresa (soft delete)
+      description: Roles&#58; SUPERADMIN, ENCARGADO.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Eliminada
+
+  /companies/{id}/reactivate:
+    patch:
+      tags: [companies]
+      summary: Reactivar empresa eliminada
+      description: Solo SUPERADMIN.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Reactivada
+
+  /companies/{id}/case-file:
+    get:
+      tags: [companies]
+      summary: Obtener expediente de la empresa
+      description: Todos los roles.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Expediente de la empresa
+        "404":
+          description: Empresa o expediente no encontrado
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    CreateCompanyDto:
+      type: object
+      required: [legalName, category]
+      properties:
+        legalName:
+          type: string
+          minLength: 3
+          maxLength: 255
+        nit:
+          type: string
+          pattern: '^\d{7,13}$'
+        category:
+          type: string
+          enum: [C3, C4]
+        address:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+        legalRepName:
+          type: string
+        legalRepCi:
+          type: string
+        legalRepresentatives:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              ci: { type: string }
+              phone: { type: string }
+        caebCodes:
+          type: array
+          items:
+            type: string
+            pattern: '^\d{5}$'
+          maxItems: 10
+        economicActivity:
+          type: string
+        municipality:
+          type: string
+        observations:
+          type: string
+        businessClass:
+          type: string
+        district:
+          type: string
+          enum: [DISTRITO_1, DISTRITO_2, DISTRITO_3, DISTRITO_4, DISTRITO_5, DISTRITO_6, DISTRITO_7, DISTRITO_LAVA_LAVA, DISTRITO_CHINATA, DISTRITO_PALCA, DISTRITO_AGUIRRE, DISTRITO_UCUCHI]
+        geoZone:
+          type: string
+          enum: [Urbano, Rural]
+        utmZone:
+          type: string
+          enum: [ZONE_19K, ZONE_20K]
+        coordinates:
+          type: string
+        effluentDisposal:
+          type: string
+          enum: [PTAR, PTAR_ALCANTARILLADO, ALCANTARILLADO_COOPERATIVA, POZO_SEPTICO, OTRO]
+        solidWasteDisposal:
+          type: string
+          enum: [GERES, TERCIARIZACION, GERES_TERCIARIZACION, OTRO]
+        useHazardousSubstances:
+          type: boolean
+        hazardousSubstancesDescription:
+          type: string
+        usesMercury:
+          type: boolean
+        rawMaterials:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              quantity: { type: string }
+              unit: { type: string }
+        finalProducts:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              quantity: { type: string }
+              unit: { type: string }
+        usedArea:
+          type: number
+        areaUnit:
+          type: string
+        waterSupply:
+          type: string
+          enum: [POZO_DE_AGUA, RED_DE_AGUA_COOPERATIVA, CISTERNA, EMAPAS, POZO_COOPERATIVA, OTROS]
+        installedPower:
+          type: number

@@ -1,0 +1,170 @@
+openapi: "3.0.3"
+info:
+  title: Observations (Observaciones)
+  version: "1.0"
+tags:
+  - name: observations
+
+security:
+  - bearerAuth: []
+
+paths:
+  /procedures/{procedureId}/observations:
+    post:
+      tags: [observations]
+      summary: Crear observación
+      description: |
+        Roles: INSPECTOR, ENCARGADO, SUPERADMIN.
+        Si cycleId se omite, el servicio asigna automáticamente el ciclo activo del trámite.
+        Para poder mover el trámite a OBSERVADO_PENDIENTE_RECOJO, debe existir al menos
+        una observación con isResolved=false.
+      parameters:
+        - { name: procedureId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateObservationDto"
+      responses:
+        "201":
+          description: Observación creada
+        "404":
+          description: Trámite no encontrado
+
+    get:
+      tags: [observations]
+      summary: Listar observaciones de un trámite
+      description: Todos los roles.
+      parameters:
+        - { name: procedureId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, default: 10 } }
+        - { name: isResolved, in: query, schema: { type: boolean } }
+        - { name: category, in: query, schema: { type: string, enum: [DOCUMENTAL, TECNICA, ADMINISTRATIVA, LEGAL, OTRA] } }
+        - { name: priority, in: query, schema: { type: string, enum: [ALTA, MEDIA, BAJA] } }
+        - { name: cycleId, in: query, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Lista paginada de observaciones
+
+  /procedures/{procedureId}/observations/{id}:
+    get:
+      tags: [observations]
+      summary: Obtener observación por ID
+      description: Todos los roles.
+      parameters:
+        - { name: procedureId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Observación encontrada
+        "404":
+          description: No encontrada
+
+    patch:
+      tags: [observations]
+      summary: Actualizar observación
+      description: Roles&#58; INSPECTOR, ENCARGADO, SUPERADMIN.
+      parameters:
+        - { name: procedureId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                summary: { type: string, minLength: 5, maxLength: 500 }
+                details: { type: string }
+                category:
+                  type: string
+                  enum: [DOCUMENTAL, TECNICA, ADMINISTRATIVA, LEGAL, OTRA]
+                priority:
+                  type: string
+                  enum: [ALTA, MEDIA, BAJA]
+      responses:
+        "200":
+          description: Actualizada
+
+    delete:
+      tags: [observations]
+      summary: Eliminar observación (soft delete)
+      description: Solo SUPERADMIN.
+      parameters:
+        - { name: procedureId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Eliminada
+
+  /procedures/{procedureId}/observations/{id}/resolve:
+    patch:
+      tags: [observations]
+      summary: Marcar observación como resuelta
+      description: Roles&#58; INSPECTOR, ENCARGADO, SUPERADMIN.
+      parameters:
+        - { name: procedureId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resolutionNote: { type: string }
+      responses:
+        "200":
+          description: Observación resuelta
+
+  /procedures/{procedureId}/observations/{id}/reopen:
+    patch:
+      tags: [observations]
+      summary: Reabrir observación resuelta
+      description: Roles&#58; ENCARGADO, SUPERADMIN.
+      parameters:
+        - { name: procedureId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Observación reabierta
+
+  /cycles/{cycleId}/observations:
+    get:
+      tags: [observations]
+      summary: Listar observaciones de un ciclo
+      description: Todos los roles.
+      parameters:
+        - { name: cycleId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Observaciones del ciclo
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    CreateObservationDto:
+      type: object
+      required: [summary]
+      properties:
+        cycleId:
+          type: string
+          format: uuid
+          description: Si se omite, se asigna al ciclo activo automáticamente.
+        summary:
+          type: string
+          minLength: 5
+          maxLength: 500
+        details:
+          type: string
+        category:
+          type: string
+          enum: [DOCUMENTAL, TECNICA, ADMINISTRATIVA, LEGAL, OTRA]
+        priority:
+          type: string
+          enum: [ALTA, MEDIA, BAJA]

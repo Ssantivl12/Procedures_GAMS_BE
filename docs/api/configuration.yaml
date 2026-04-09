@@ -1,0 +1,242 @@
+openapi: "3.0.3"
+info:
+  title: Configuration
+  version: "1.0"
+  description: |
+    Gestión de tipos de trámite, plazos y días no laborables.
+    Las mutaciones de DeadlineConfig y NonWorkingDay invalidan el caché en memoria inmediatamente
+    (ver docs/domain/deadlines.md).
+tags:
+  - name: procedure-types
+  - name: deadlines
+  - name: non-working-days
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ── Procedure Types ──────────────────────────────────────────────────────────
+
+  /config/procedure-types:
+    get:
+      tags: [procedure-types]
+      summary: Listar tipos de trámite
+      description: Todos los roles.
+      responses:
+        "200":
+          description: Lista de tipos (RAI, MAI_PMA, IAA, CIERRE) con flags allowsObservations y allowsReentry
+
+  /config/procedure-types/{id}:
+    get:
+      tags: [procedure-types]
+      summary: Obtener tipo de trámite por ID
+      description: Todos los roles.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Tipo de trámite
+
+    patch:
+      tags: [procedure-types]
+      summary: Actualizar tipo de trámite
+      description: Solo SUPERADMIN. Permite cambiar allowsObservations y allowsReentry.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                allowsObservations: { type: boolean }
+                allowsReentry: { type: boolean }
+      responses:
+        "200":
+          description: Actualizado
+
+  # ── Deadlines ────────────────────────────────────────────────────────────────
+
+  /config/deadlines:
+    get:
+      tags: [deadlines]
+      summary: Listar configuraciones de plazos
+      description: Todos los roles.
+      responses:
+        "200":
+          description: Lista de DeadlineConfig activos
+
+    post:
+      tags: [deadlines]
+      summary: Crear configuración de plazo
+      description: Solo SUPERADMIN. Invalida el caché de deadlines.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDeadlineDto"
+      responses:
+        "201":
+          description: Creado
+
+  /config/deadlines/{id}:
+    get:
+      tags: [deadlines]
+      summary: Obtener plazo por ID
+      description: Todos los roles.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: DeadlineConfig
+
+    patch:
+      tags: [deadlines]
+      summary: Actualizar plazo
+      description: Solo SUPERADMIN. Invalida el caché de deadlines.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deadlineDays: { type: integer, minimum: 1 }
+                description: { type: string }
+      responses:
+        "200":
+          description: Actualizado
+
+    delete:
+      tags: [deadlines]
+      summary: Desactivar plazo
+      description: Solo SUPERADMIN. Soft delete (isActive=false). Invalida caché.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Desactivado
+
+  # ── Non-Working Days ─────────────────────────────────────────────────────────
+
+  /config/non-working-days:
+    get:
+      tags: [non-working-days]
+      summary: Listar días no laborables
+      description: Todos los roles.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, default: 20 } }
+        - { name: year, in: query, schema: { type: integer } }
+        - { name: type, in: query, schema: { type: string }, description: "Ej: NACIONAL, MUNICIPAL" }
+      responses:
+        "200":
+          description: Lista paginada de NonWorkingDay
+
+    post:
+      tags: [non-working-days]
+      summary: Crear día no laborable
+      description: Solo SUPERADMIN. Invalida el caché de nonWorkingDays.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNonWorkingDayDto"
+      responses:
+        "201":
+          description: Creado
+        "409":
+          description: La fecha ya existe
+
+  /config/non-working-days/bulk:
+    post:
+      tags: [non-working-days]
+      summary: Crear múltiples días no laborables
+      description: Solo SUPERADMIN. Upsert masivo. Invalida caché.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [days]
+              properties:
+                days:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/CreateNonWorkingDayDto"
+      responses:
+        "201":
+          description: Creados/actualizados
+
+  /config/non-working-days/{id}:
+    patch:
+      tags: [non-working-days]
+      summary: Actualizar día no laborable
+      description: Solo SUPERADMIN. Invalida el caché.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                date: { type: string, format: date }
+                description: { type: string }
+                type: { type: string }
+      responses:
+        "200":
+          description: Actualizado
+
+    delete:
+      tags: [non-working-days]
+      summary: Eliminar día no laborable
+      description: Solo SUPERADMIN. Soft delete. Invalida caché.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Eliminado
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    CreateDeadlineDto:
+      type: object
+      required: [procedureType, cycleNumber, deadlineDays]
+      properties:
+        procedureType:
+          type: string
+          enum: [RAI, MAI_PMA, IAA, CIERRE]
+        cycleNumber:
+          type: integer
+          description: "0 = primera revisión, 1 = reingresos y subsanaciones"
+          enum: [0, 1]
+        deadlineDays:
+          type: integer
+          minimum: 1
+        description:
+          type: string
+
+    CreateNonWorkingDayDto:
+      type: object
+      required: [date]
+      properties:
+        date:
+          type: string
+          format: date
+        description:
+          type: string
+          description: "Ej: Año Nuevo, Carnaval"
+        type:
+          type: string
+          description: "Ej: NACIONAL, MUNICIPAL"

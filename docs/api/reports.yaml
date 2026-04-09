@@ -1,0 +1,199 @@
+openapi: "3.0.3"
+info:
+  title: Reports & Alerts
+  version: "1.0"
+tags:
+  - name: dashboard
+  - name: alerts
+  - name: reports
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ── Dashboard ────────────────────────────────────────────────────────────────
+
+  /dashboard:
+    get:
+      tags: [dashboard]
+      summary: Datos del dashboard por rol
+      description: |
+        Todos los roles. La respuesta varía según el rol del usuario autenticado:
+        - INSPECTOR: sus trámites asignados con plazos.
+        - SECRETARIA: trámites pendientes de acción (RECIBIDO, OBSERVADO, SUBSANACION).
+        - ENCARGADO/SUPERADMIN: métricas globales + alertas resumen.
+      responses:
+        "200":
+          description: Datos del dashboard adaptados al rol
+
+  # ── Alerts ───────────────────────────────────────────────────────────────────
+
+  /alerts/summary:
+    get:
+      tags: [alerts]
+      summary: Resumen de todas las alertas
+      description: Todos los roles. Devuelve conteos por categoría.
+      responses:
+        "200":
+          description: Conteos de alertas activas por tipo
+
+  /alerts/overdue:
+    get:
+      tags: [alerts]
+      summary: Trámites vencidos
+      description: Trámites activos con isOverdue=true.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, default: 20 } }
+        - { name: assignedInspectorId, in: query, schema: { type: string, format: uuid } }
+        - { name: procedureTypeCode, in: query, schema: { type: string, enum: [RAI, MAI_PMA, IAA, CIERRE] } }
+      responses:
+        "200":
+          description: Lista paginada de trámites vencidos
+
+  /alerts/due-soon:
+    get:
+      tags: [alerts]
+      summary: Trámites por vencer
+      description: Trámites activos con vencimiento en los próximos N días hábiles.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, default: 20 } }
+        - { name: days, in: query, schema: { type: integer, default: 3, minimum: 1 }, description: "Ventana en días hábiles" }
+        - { name: assignedInspectorId, in: query, schema: { type: string, format: uuid } }
+        - { name: procedureTypeCode, in: query, schema: { type: string, enum: [RAI, MAI_PMA, IAA, CIERRE] } }
+      responses:
+        "200":
+          description: Lista paginada
+
+  /alerts/pending-pickup:
+    get:
+      tags: [alerts]
+      summary: Trámites con observaciones pendientes de recojo
+      description: Trámites en estado OBSERVADO_PENDIENTE_RECOJO.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, default: 20 } }
+        - { name: assignedInspectorId, in: query, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Lista paginada
+
+  /alerts/rai-expiration:
+    get:
+      tags: [alerts]
+      summary: RAIs por vencer o vencidos
+      description: RAIs cerrados cuya expirationDate cae dentro de la ventana configurada.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, default: 20 } }
+        - { name: withinDays, in: query, schema: { type: integer, default: 90, minimum: 1 }, description: "Días calendario hacia adelante" }
+      responses:
+        "200":
+          description: Lista paginada con raiStatus (POR_VENCER | VENCIDO)
+
+  /alerts/iaa-missing:
+    get:
+      tags: [alerts]
+      summary: Empresas C3 sin IAA del año en curso
+      description: Expedientes C3 que no tienen IAA registrado para la gestión actual.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, default: 20 } }
+      responses:
+        "200":
+          description: Lista de empresas C3 con IAA faltante
+
+  # ── Reports ──────────────────────────────────────────────────────────────────
+
+  /reports/procedures:
+    get:
+      tags: [reports]
+      summary: Reporte de trámites
+      description: Todos los roles. Soporta salida JSON o CSV.
+      parameters:
+        - $ref: "#/components/parameters/ReportParams"
+      responses:
+        "200":
+          description: Reporte en JSON o archivo CSV
+
+  /reports/companies:
+    get:
+      tags: [reports]
+      summary: Reporte de empresas
+      description: Todos los roles.
+      parameters:
+        - $ref: "#/components/parameters/ReportParams"
+      responses:
+        "200":
+          description: Reporte en JSON o archivo CSV
+
+  /reports/expired-rai:
+    get:
+      tags: [reports]
+      summary: Reporte de RAIs vencidos
+      description: Todos los roles.
+      parameters:
+        - $ref: "#/components/parameters/ReportParams"
+      responses:
+        "200":
+          description: Reporte en JSON o archivo CSV
+
+  /reports/iaa-status:
+    get:
+      tags: [reports]
+      summary: Reporte de estado de IAAs
+      description: Todos los roles.
+      parameters:
+        - $ref: "#/components/parameters/ReportParams"
+      responses:
+        "200":
+          description: Reporte en JSON o archivo CSV
+
+  /reports/activity:
+    get:
+      tags: [reports]
+      summary: Reporte de actividad
+      description: Roles&#58; SUPERADMIN, ENCARGADO.
+      parameters:
+        - $ref: "#/components/parameters/ReportParams"
+      responses:
+        "200":
+          description: Reporte en JSON o archivo CSV
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    ReportParams:
+      name: format
+      in: query
+      schema:
+        type: object
+        properties:
+          format:
+            type: string
+            enum: [json, csv]
+            default: json
+          page:
+            type: integer
+            default: 1
+          limit:
+            type: integer
+            default: 50
+          dateFrom:
+            type: string
+            format: date
+          dateTo:
+            type: string
+            format: date
+          category:
+            type: string
+            enum: [C3, C4]
+          status:
+            type: string
+            enum: [RECIBIDO, EN_REVISION, OBSERVADO_PENDIENTE_RECOJO, SUBSANACION_PENDIENTE_REINGRESO, CERRADO, ABANDONADO]
