@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../db/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { SnapshotService } from '../snapshot/snapshot.service';
 import { ConfigCacheService } from '../configuration/config-cache.service';
 import { CreateProcedureDto } from './dto/create-procedure.dto';
 import { UpdateProcedureDto } from './dto/update-procedure.dto';
@@ -32,8 +33,15 @@ export class ProceduresService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
+    private readonly snapshot: SnapshotService,
     private readonly cache: ConfigCacheService,
   ) {}
+
+  private procedureScalars(p: any): Record<string, any> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { procedureType, caseFile, assignedInspector, createdBy, cycles, audits, documents, observations, ...scalars } = p;
+    return scalars;
+  }
 
   // ---------------------------------------------------------------------------
   // Private helpers
@@ -337,14 +345,24 @@ export class ProceduresService {
       return created;
     });
 
-    await this.auditService.log({
+    this.auditService.log({
       action: PROCEDURE_AUDIT_ACTIONS.CREATED,
       userId,
+      entityType: 'PROCEDURE',
+      entityId: procedure.id,
       details: {
         procedureId: procedure.id,
         caseFileId: dto.caseFileId,
         procedureTypeId: dto.procedureTypeId,
       },
+    });
+
+    this.snapshot.save({
+      entityType: 'PROCEDURE',
+      entityId: procedure.id,
+      action: PROCEDURE_AUDIT_ACTIONS.CREATED,
+      changedById: userId,
+      snapshotData: this.procedureScalars(procedure),
     });
 
     return this.buildResponse(procedure);
@@ -449,6 +467,8 @@ export class ProceduresService {
       throw new NotFoundException(PROCEDURE_MESSAGES.ERROR.NOT_FOUND);
     }
 
+    const before = this.procedureScalars(procedure);
+
     const data: Prisma.ProcedureUpdateInput = {};
     if (dto.routeSheetNumber !== undefined) data.routeSheetNumber = dto.routeSheetNumber;
     if (dto.companyStatus !== undefined) data.companyStatus = dto.companyStatus;
@@ -460,10 +480,20 @@ export class ProceduresService {
       include: this.procedureInclude,
     });
 
-    await this.auditService.log({
+    this.auditService.log({
       action: PROCEDURE_AUDIT_ACTIONS.UPDATED,
       userId,
+      entityType: 'PROCEDURE',
+      entityId: id,
       details: { procedureId: id, changes: dto },
+    });
+
+    this.snapshot.save({
+      entityType: 'PROCEDURE',
+      entityId: id,
+      action: PROCEDURE_AUDIT_ACTIONS.UPDATED,
+      changedById: userId,
+      snapshotData: { before, after: this.procedureScalars(updated) },
     });
 
     return this.buildResponse(updated);
@@ -718,10 +748,20 @@ export class ProceduresService {
       return proc;
     });
 
-    await this.auditService.log({
+    this.auditService.log({
       action: PROCEDURE_AUDIT_ACTIONS.STATUS_CHANGED,
       userId,
+      entityType: 'PROCEDURE',
+      entityId: id,
       details: { procedureId: id, fromStatus, toStatus },
+    });
+
+    this.snapshot.save({
+      entityType: 'PROCEDURE',
+      entityId: id,
+      action: PROCEDURE_AUDIT_ACTIONS.STATUS_CHANGED,
+      changedById: userId,
+      snapshotData: { before: this.procedureScalars(procedure), after: this.procedureScalars(updated) },
     });
 
     return this.buildResponse(updated);
@@ -766,10 +806,23 @@ export class ProceduresService {
       include: this.procedureInclude,
     });
 
-    await this.auditService.log({
+    this.auditService.log({
       action: PROCEDURE_AUDIT_ACTIONS.ASSIGNED,
       userId,
+      entityType: 'PROCEDURE',
+      entityId: id,
       details: { procedureId: id, inspectorUserId: dto.inspectorUserId },
+    });
+
+    this.snapshot.save({
+      entityType: 'PROCEDURE',
+      entityId: id,
+      action: PROCEDURE_AUDIT_ACTIONS.ASSIGNED,
+      changedById: userId,
+      snapshotData: {
+        previousInspectorUserId: procedure.assignedInspectorUserId,
+        newInspectorUserId: dto.inspectorUserId,
+      },
     });
 
     return this.buildResponse(updated);
@@ -796,10 +849,20 @@ export class ProceduresService {
       data: { isActive: false, deletedAt: new Date() },
     });
 
-    await this.auditService.log({
+    this.auditService.log({
       action: PROCEDURE_AUDIT_ACTIONS.DELETED,
       userId,
+      entityType: 'PROCEDURE',
+      entityId: id,
       details: { procedureId: id },
+    });
+
+    this.snapshot.save({
+      entityType: 'PROCEDURE',
+      entityId: id,
+      action: PROCEDURE_AUDIT_ACTIONS.DELETED,
+      changedById: userId,
+      snapshotData: this.procedureScalars(procedure),
     });
 
     return { message: PROCEDURE_MESSAGES.SUCCESS.DELETED, id };
@@ -896,16 +959,20 @@ export class ProceduresService {
       return created;
     });
 
-    await this.auditService.log({
+    this.auditService.log({
       action: PROCEDURE_AUDIT_ACTIONS.CYCLE_CREATED,
       userId,
+      entityType: 'PROCEDURE',
+      entityId: procedureId,
       details: { procedureId, cycleNumber: newCycleNumber, autoTransition: dto.autoTransition },
     });
 
     if (dto.autoTransition) {
-      await this.auditService.log({
+      this.auditService.log({
         action: PROCEDURE_AUDIT_ACTIONS.STATUS_CHANGED,
         userId,
+        entityType: 'PROCEDURE',
+        entityId: procedureId,
         details: {
           procedureId,
           fromStatus: procedure.currentStatus,
@@ -971,9 +1038,11 @@ export class ProceduresService {
       },
     });
 
-    await this.auditService.log({
+    this.auditService.log({
       action: PROCEDURE_AUDIT_ACTIONS.CYCLE_CLOSED,
       userId,
+      entityType: 'PROCEDURE',
+      entityId: procedureId,
       details: { procedureId, cycleId },
     });
 

@@ -424,17 +424,33 @@ model RefreshToken {
 }
 
 model AuditLog {
-  id        String   @id @default(uuid())
-  action    String
-  userId    String?
-  details   Json?
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  id         String   @id @default(uuid())
+  action     String
+  userId     String?
+  entityType String?
+  entityId   String?
+  details    Json?
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
 
   user User? @relation("UserAuditLogs", fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([action])
+  @@index([entityType, entityId])
   @@map("audit_log")
+}
+
+model EntitySnapshot {
+  id           String   @id @default(uuid())
+  entityType   String
+  entityId     String
+  action       String
+  changedById  String?
+  snapshotData Json
+  changedAt    DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([entityType, entityId, changedAt])
+  @@map("entity_snapshot")
 }
 
 model DeadlineConfig {

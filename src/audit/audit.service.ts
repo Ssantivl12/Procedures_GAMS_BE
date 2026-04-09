@@ -7,11 +7,19 @@ export class AuditService {
 
   constructor(private readonly prisma: PrismaService) { }
 
-  private async write(data: { action: string; userId?: string | null; details?: Record<string, any> }): Promise<void> {
+  private async write(data: {
+    action: string;
+    userId?: string | null;
+    entityType?: string | null;
+    entityId?: string | null;
+    details?: Record<string, any>;
+  }): Promise<void> {
     await this.prisma.auditLog.create({
       data: {
         action: data.action,
         userId: data.userId ?? undefined,
+        entityType: data.entityType ?? undefined,
+        entityId: data.entityId ?? undefined,
         details: data.details ?? {},
       },
     });
@@ -21,7 +29,13 @@ export class AuditService {
    * Fire-and-forget audit log for non-critical operational events.
    * Failures are swallowed and logged to the console.
    */
-  log(data: { action: string; userId?: string | null; details?: Record<string, any> }): void {
+  log(data: {
+    action: string;
+    userId?: string | null;
+    entityType?: string | null;
+    entityId?: string | null;
+    details?: Record<string, any>;
+  }): void {
     this.write(data).catch((error: Error) => {
       this.logger.error(`Failed to create audit log [${data.action}]: ${error.message}`, error.stack);
     });
@@ -31,7 +45,13 @@ export class AuditService {
    * Awaited audit log for security-critical events (login, logout, password changes).
    * Failures propagate to the caller.
    */
-  async logCritical(data: { action: string; userId?: string | null; details?: Record<string, any> }): Promise<void> {
+  async logCritical(data: {
+    action: string;
+    userId?: string | null;
+    entityType?: string | null;
+    entityId?: string | null;
+    details?: Record<string, any>;
+  }): Promise<void> {
     await this.write(data);
   }
 }

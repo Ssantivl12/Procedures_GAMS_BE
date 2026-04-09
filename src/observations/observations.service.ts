@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../db/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { SnapshotService } from '../snapshot/snapshot.service';
 import { CreateObservationDto } from './dto/create-observation.dto';
 import { UpdateObservationDto } from './dto/update-observation.dto';
 import { ResolveObservationDto } from './dto/resolve-observation.dto';
@@ -20,7 +21,14 @@ export class ObservationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
+    private readonly snapshot: SnapshotService,
   ) {}
+
+  private observationScalars(o: any): Record<string, any> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { issuedBy, resolvedBy, procedure, cycle, ...scalars } = o;
+    return scalars;
+  }
 
   private get observationInclude() {
     return {
@@ -81,10 +89,20 @@ export class ObservationsService {
       include: this.observationInclude,
     });
 
-    await this.auditService.log({
+    this.auditService.log({
       action: OBSERVATION_AUDIT_ACTIONS.CREATED,
       userId,
+      entityType: 'OBSERVATION',
+      entityId: observation.id,
       details: { observationId: observation.id, procedureId, cycleId: resolvedCycleId },
+    });
+
+    this.snapshot.save({
+      entityType: 'OBSERVATION',
+      entityId: observation.id,
+      action: OBSERVATION_AUDIT_ACTIONS.CREATED,
+      changedById: userId,
+      snapshotData: this.observationScalars(observation),
     });
 
     return observation;
@@ -224,6 +242,8 @@ export class ObservationsService {
       throw new ConflictException(OBSERVATION_MESSAGES.ERROR.ALREADY_RESOLVED);
     }
 
+    const before = this.observationScalars(observation);
+
     const data: Prisma.ObservationUpdateInput = {};
     if (dto.summary !== undefined) data.summary = dto.summary;
     if (dto.details !== undefined) data.details = dto.details;
@@ -236,10 +256,20 @@ export class ObservationsService {
       include: this.observationInclude,
     });
 
-    await this.auditService.log({
+    this.auditService.log({
       action: OBSERVATION_AUDIT_ACTIONS.UPDATED,
       userId,
+      entityType: 'OBSERVATION',
+      entityId: id,
       details: { observationId: id, procedureId, changes: dto },
+    });
+
+    this.snapshot.save({
+      entityType: 'OBSERVATION',
+      entityId: id,
+      action: OBSERVATION_AUDIT_ACTIONS.UPDATED,
+      changedById: userId,
+      snapshotData: { before, after: this.observationScalars(updated) },
     });
 
     return updated;
@@ -260,6 +290,8 @@ export class ObservationsService {
       throw new ConflictException(OBSERVATION_MESSAGES.ERROR.ALREADY_RESOLVED);
     }
 
+    const before = this.observationScalars(observation);
+
     const updated = await this.prisma.observation.update({
       where: { id },
       data: {
@@ -271,10 +303,20 @@ export class ObservationsService {
       include: this.observationInclude,
     });
 
-    await this.auditService.log({
+    this.auditService.log({
       action: OBSERVATION_AUDIT_ACTIONS.RESOLVED,
       userId,
+      entityType: 'OBSERVATION',
+      entityId: id,
       details: { observationId: id, procedureId },
+    });
+
+    this.snapshot.save({
+      entityType: 'OBSERVATION',
+      entityId: id,
+      action: OBSERVATION_AUDIT_ACTIONS.RESOLVED,
+      changedById: userId,
+      snapshotData: { before, after: this.observationScalars(updated) },
     });
 
     return updated;
@@ -295,6 +337,8 @@ export class ObservationsService {
       throw new ConflictException(OBSERVATION_MESSAGES.ERROR.NOT_RESOLVED);
     }
 
+    const before = this.observationScalars(observation);
+
     const updated = await this.prisma.observation.update({
       where: { id },
       data: {
@@ -306,10 +350,20 @@ export class ObservationsService {
       include: this.observationInclude,
     });
 
-    await this.auditService.log({
+    this.auditService.log({
       action: OBSERVATION_AUDIT_ACTIONS.REOPENED,
       userId,
+      entityType: 'OBSERVATION',
+      entityId: id,
       details: { observationId: id, procedureId },
+    });
+
+    this.snapshot.save({
+      entityType: 'OBSERVATION',
+      entityId: id,
+      action: OBSERVATION_AUDIT_ACTIONS.REOPENED,
+      changedById: userId,
+      snapshotData: { before, after: this.observationScalars(updated) },
     });
 
     return updated;
@@ -335,10 +389,20 @@ export class ObservationsService {
       data: { isActive: false, deletedAt: new Date() },
     });
 
-    await this.auditService.log({
+    this.auditService.log({
       action: OBSERVATION_AUDIT_ACTIONS.DELETED,
       userId,
+      entityType: 'OBSERVATION',
+      entityId: id,
       details: { observationId: id, procedureId },
+    });
+
+    this.snapshot.save({
+      entityType: 'OBSERVATION',
+      entityId: id,
+      action: OBSERVATION_AUDIT_ACTIONS.DELETED,
+      changedById: userId,
+      snapshotData: this.observationScalars(observation),
     });
 
     return { message: OBSERVATION_MESSAGES.SUCCESS.DELETED, id };
