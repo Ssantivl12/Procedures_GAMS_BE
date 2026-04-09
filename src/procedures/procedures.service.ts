@@ -102,6 +102,7 @@ export class ProceduresService {
 
     if (!isTerminal) {
       const today = new Date();
+      today.setUTCHours(0, 0, 0, 0); // normalizar a medianoche UTC para comparaciones exactas
       const status = procedure.currentStatus as ProcedureStatus;
 
       // daysElapsed: días hábiles transcurridos desde el inicio del plazo activo.
