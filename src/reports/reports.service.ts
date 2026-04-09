@@ -29,12 +29,13 @@ export class ReportsService {
 
     const inspectorFilter = isInspector ? userId : assignedInspectorId;
 
+    const receptionDateFilter: any = {};
+    if (dateFrom) receptionDateFilter.gte = new Date(dateFrom);
+    if (dateTo) receptionDateFilter.lte = new Date(dateTo);
+
     const where: any = {
       isActive: true,
-      ...(dateFrom ? { receptionDate: { gte: new Date(dateFrom) } } : {}),
-      ...(dateTo
-        ? { receptionDate: { ...(dateFrom ? { gte: new Date(dateFrom) } : {}), lte: new Date(dateTo) } }
-        : {}),
+      ...(Object.keys(receptionDateFilter).length ? { receptionDate: receptionDateFilter } : {}),
       ...(procedureTypeCode ? { procedureType: { code: procedureTypeCode } } : {}),
       ...(category ? { caseFile: { company: { category } } } : {}),
       ...(currentStatus ? { currentStatus } : {}),
@@ -78,7 +79,11 @@ export class ReportsService {
       reviewStartDate: p.reviewStartDate,
       deadlineDate: p.deadlineDate,
       daysElapsed: p.daysElapsed,
+      daysRemaining: p.deadlineDate && !p.isOverdue
+        ? this.cache.countWorkingDays(new Date(), new Date(p.deadlineDate))
+        : null,
       isOverdue: p.isOverdue,
+      companyName: p.caseFile.company.legalName,
       approvalDate: p.approvalDate,
       expirationDate: p.expirationDate,
       approvalCertificate: p.approvalCertificate,
@@ -179,7 +184,7 @@ export class ReportsService {
   // GET /reports/expired-rai
   // -------------------------------------------------------------------------
   async getExpiredRai(query: QueryReportsDto) {
-    const { page = 1, limit = 100 } = query;
+    const { page = 1, limit = 100, category, municipality } = query;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const ninetyDaysLater = new Date(today.getTime() + 90 * 86400000);
@@ -189,6 +194,8 @@ export class ReportsService {
       currentStatus: ProcedureStatus.CERRADO,
       procedureType: { code: ProcedureTypeCode.RAI },
       expirationDate: { lte: ninetyDaysLater },
+      ...(category ? { caseFile: { company: { category } } } : {}),
+      ...(municipality ? { caseFile: { company: { municipality } } } : {}),
     };
 
     const [items, total] = await Promise.all([
@@ -370,6 +377,16 @@ export class ReportsService {
       }),
     );
 
+    const byTypeRecord: Record<string, { received: number; closed: number; abandoned: number }> = {};
+    for (const item of byTypeItems) {
+      byTypeRecord[item.type] = { received: item.received, closed: item.closed, abandoned: item.abandoned };
+    }
+
+    const byInspectorRecord: Record<string, { closed: number; abandoned: number }> = {};
+    for (const item of byInspector) {
+      byInspectorRecord[item.inspector.fullName] = { closed: item.closed, abandoned: item.abandoned };
+    }
+
     return {
       period: { from, to },
       received,
@@ -377,8 +394,8 @@ export class ReportsService {
       abandoned,
       avgDaysToClose,
       avgCyclesPerProcedure,
-      byType: byTypeItems,
-      byInspector,
+      byType: byTypeRecord,
+      byInspector: byInspectorRecord,
     };
   }
 

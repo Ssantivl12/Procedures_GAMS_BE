@@ -43,10 +43,10 @@ export class DeadlinesController {
     return this.service.create(dto);
   }
 
-  @Patch()
+  @Patch(':id')
   @Roles(UserRole.SUPERADMIN)
-  update(@Body() dto: UpdateDeadlineDto) {
-    return this.service.update(dto);
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateDeadlineDto) {
+    return this.service.update(id, dto);
   }
 
   @Delete(':id')

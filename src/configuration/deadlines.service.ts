@@ -58,21 +58,20 @@ export class DeadlinesService {
     return record;
   }
 
-  async update(dto: UpdateDeadlineDto) {
-    const record = await this.prisma.deadlineConfig.update({
-      where: {
-        procedureType_cycleNumber: {
-          procedureType: dto.procedureType,
-          cycleNumber: dto.cycleNumber,
-        },
-      },
+  async update(id: number, dto: UpdateDeadlineDto) {
+    const record = await this.prisma.deadlineConfig.findUnique({ where: { id } });
+    if (!record || !record.isActive) {
+      throw new NotFoundException(CONFIG_MESSAGES.DEADLINE.ERROR.NOT_FOUND);
+    }
+    const updated = await this.prisma.deadlineConfig.update({
+      where: { id },
       data: {
         deadlineDays: dto.deadlineDays,
         description: dto.description,
       },
     });
     await this.cache.refreshDeadlines();
-    return record;
+    return updated;
   }
 
   async deactivate(id: number) {

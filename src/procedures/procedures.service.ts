@@ -15,7 +15,7 @@ import { AssignInspectorDto } from './dto/assign-inspector.dto';
 import { QueryProceduresDto } from './dto/query-procedures.dto';
 import { CreateCycleDto } from './dto/create-cycle.dto';
 import { CloseCycleDto } from './dto/close-cycle.dto';
-import { ProcedureStatus, ProcedureTypeCode, CompanyCategory, Prisma } from '@prisma/client';
+import { ProcedureStatus, ProcedureTypeCode, CompanyCategory, CompanyStatus, Prisma } from '@prisma/client';
 import { UserRole } from '../common/constants/role.constants';
 import {
   PROCEDURE_MESSAGES,
@@ -79,19 +79,6 @@ export class ProceduresService {
     return 'VIGENTE';
   }
 
-  /**
-   * Derives isOverdue from deadlineDate at response time for accuracy.
-   * Falls back to the stored field if deadlineDate is null.
-   */
-  private computeIsOverdue(procedure: any): boolean {
-    if (!procedure.deadlineDate) return procedure.isOverdue ?? false;
-    const isTerminal =
-      procedure.currentStatus === ProcedureStatus.CERRADO ||
-      procedure.currentStatus === ProcedureStatus.ABANDONADO;
-    if (isTerminal) return false;
-    return new Date() > new Date(procedure.deadlineDate);
-  }
-
   private buildResponse(procedure: any) {
     const isTerminal =
       procedure.currentStatus === ProcedureStatus.CERRADO ||
@@ -99,65 +86,83 @@ export class ProceduresService {
 
     let daysElapsed: number | null = null;
     let daysRemaining: number | null = null;
+    // Start from the stored value; may be overridden below if we can compute dynamically.
+    let deadlineDate: Date | null = procedure.deadlineDate ?? null;
+    let isOverdue = false;
 
     if (!isTerminal) {
       const today = new Date();
       today.setUTCHours(0, 0, 0, 0); // normalizar a medianoche UTC para comparaciones exactas
       const status = procedure.currentStatus as ProcedureStatus;
+      const typeCode = procedure.procedureType?.code as ProcedureTypeCode | undefined;
 
-      // daysElapsed: días hábiles transcurridos desde el inicio del plazo activo.
+      // Determine the start date and configured deadline days for the active phase.
       //
-      // RECIBIDO / EN_REVISION ciclo 1 → desde receptionDate
-      //   El reloj empieza cuando se registra el trámite, independientemente
-      //   de cuándo el inspector lo asuma formalmente.
-      //
-      // EN_REVISION reingreso (cycleCount > 1) → desde reviewStartDate
-      //   En reingresos reviewStartDate = reentryDate, fijado por createCycle.
-      //
-      // SUBSANACION → desde obsPickedDate
-      //   El administrado recogió las obs; su plazo de 10 WD empieza ese día.
-      //
-      // OBSERVADO → null (reloj pausado, el administrado aún no recogió).
+      // RECIBIDO / EN_REVISION ciclo 1 → reloj desde receptionDate
+      // EN_REVISION reingreso (cycleCount > 1) → reloj desde reviewStartDate (= reentryDate)
+      // SUBSANACION → reloj desde obsPickedDate
+      // OBSERVADO → reloj pausado (clockStartDate = null)
+      let clockStartDate: Date | null = null;
+      let deadlineDays: number | null = null;
+
       if (
         (status === ProcedureStatus.RECIBIDO || status === ProcedureStatus.EN_REVISION) &&
         procedure.cycleCount <= 1
       ) {
-        // Ciclo 1: el plazo corre desde receptionDate
-        daysElapsed = this.cache.countWorkingDays(new Date(procedure.receptionDate), today);
+        clockStartDate = new Date(procedure.receptionDate);
+        // RAI en estado PROYECTO usa 10 días en primera revisión (cycleKey 1)
+        const cycleKey =
+          typeCode === ProcedureTypeCode.RAI &&
+          procedure.companyStatus === CompanyStatus.PROYECTO
+            ? 1
+            : 0;
+        deadlineDays = typeCode ? (this.getDeadlineDays(typeCode, cycleKey) ?? null) : null;
       } else if (status === ProcedureStatus.EN_REVISION && procedure.reviewStartDate) {
-        // Reingreso: el plazo corre desde reviewStartDate (= reentryDate)
-        daysElapsed = this.cache.countWorkingDays(new Date(procedure.reviewStartDate), today);
+        clockStartDate = new Date(procedure.reviewStartDate);
+        deadlineDays = typeCode ? (this.getDeadlineDays(typeCode, 1) ?? null) : null;
       } else if (
         status === ProcedureStatus.SUBSANACION_PENDIENTE_REINGRESO &&
         procedure.obsPickedDate
       ) {
-        daysElapsed = this.cache.countWorkingDays(new Date(procedure.obsPickedDate), today);
+        clockStartDate = new Date(procedure.obsPickedDate);
+        deadlineDays = typeCode ? (this.getDeadlineDays(typeCode, 1) ?? null) : null;
       }
 
-      // daysRemaining: días hábiles que quedan hasta el vencimiento del plazo activo.
-      // Valor negativo indica cuántos días hábiles lleva vencido.
-      // Aplica en todos los estados donde deadlineDate está vigente.
+      // Recompute deadlineDate dynamically so that holidays registered after procedure
+      // creation automatically push the deadline forward (stored DB value becomes stale
+      // the moment a new holiday is added within the window).
+      if (clockStartDate !== null && deadlineDays !== null) {
+        deadlineDate = this.cache.addWorkingDays(clockStartDate, deadlineDays);
+      }
+
+      // daysElapsed: días hábiles transcurridos desde el inicio del plazo activo.
+      if (clockStartDate !== null) {
+        daysElapsed = this.cache.countWorkingDays(clockStartDate, today);
+      }
+
+      // daysRemaining: días hábiles restantes (negativo = vencido hace N días hábiles).
       const hasActiveClock =
         status === ProcedureStatus.RECIBIDO ||
         status === ProcedureStatus.EN_REVISION ||
         status === ProcedureStatus.SUBSANACION_PENDIENTE_REINGRESO;
 
-      if (hasActiveClock && procedure.deadlineDate) {
-        const deadline = new Date(procedure.deadlineDate);
-        if (today <= deadline) {
-          daysRemaining = this.cache.countWorkingDays(today, deadline);
+      if (hasActiveClock && deadlineDate) {
+        if (today <= deadlineDate) {
+          daysRemaining = this.cache.countWorkingDays(today, deadlineDate);
         } else {
-          daysRemaining = -this.cache.countWorkingDays(deadline, today);
+          daysRemaining = -this.cache.countWorkingDays(deadlineDate, today);
         }
+        isOverdue = today > deadlineDate;
       }
     }
 
     return {
       ...procedure,
+      deadlineDate,
       daysElapsed,
       daysRemaining,
+      isOverdue,
       raiStatus: this.computeRaiStatus(procedure),
-      isOverdue: this.computeIsOverdue(procedure),
     };
   }
 
@@ -287,8 +292,15 @@ export class ProceduresService {
       }
     }
 
-    // 7. Calculate initial deadline from receptionDate (clock starts at RECIBIDO)
-    const initialDeadlineDays = this.getDeadlineDays(procedureType.code, 0);
+    // 7. Calculate initial deadline from receptionDate (clock starts at RECIBIDO).
+    // RAI en estado PROYECTO usa el plazo de reingreso (10 días) en la primera revisión
+    // en lugar del plazo estándar de primera revisión (5 días).
+    const initialCycleKey =
+      procedureType.code === ProcedureTypeCode.RAI &&
+      dto.companyStatus === CompanyStatus.PROYECTO
+        ? 1
+        : 0;
+    const initialDeadlineDays = this.getDeadlineDays(procedureType.code, initialCycleKey);
     const initialDeadlineDate =
       initialDeadlineDays !== null
         ? this.cache.addWorkingDays(new Date(dto.receptionDate), initialDeadlineDays)
