@@ -6,7 +6,8 @@
 |---|---|
 | `AuthModule` | Login/logout, emisión y rotación de JWT access + refresh tokens, throttling de endpoints sensibles. |
 | `UsersModule` | CRUD de usuarios internos y gestión de roles. Solo accesible por SUPERADMIN. |
-| `AuditModule` | Escritura de `AuditLog` en BD. Expone `AuditService` (ver sección de audit). |
+| `AuditModule` | Escritura de `AuditLog` en BD. Expone `AuditService` (ver sección de trazabilidad). |
+| `SnapshotModule` | Escritura de `EntitySnapshot` en BD. Expone `SnapshotService` (ver sección de trazabilidad). |
 | `CompaniesModule` | CRUD de empresas (C3/C4) y consulta de su expediente vinculado. |
 | `CasesModule` | Gestión del expediente (`CaseFile`): creación, apertura/cierre, búsqueda por empresa. |
 | `ProceduresModule` | Núcleo del dominio: trámites, transiciones de estado, ciclos, asignación de inspector, scheduler nocturno. |
@@ -30,30 +31,96 @@ Controller  ──▶  Service  ──▶  PrismaService (directo)
 
 ---
 
-## Audit logging
+## Trazabilidad (Audit & Snapshots)
 
-`AuditService` expone dos métodos con semánticas distintas:
+El sistema tiene tres capas de trazabilidad complementarias:
 
-### `log()` — fire-and-forget
+| Capa | Tabla | Cuándo usar |
+|---|---|---|
+| `ProcedureAudit` | `procedure_audit` | Transiciones de estado: `fromStatus → toStatus`, quién, cuándo, nota. Inmutable. |
+| `AuditLog` | `audit_log` | Log de acciones: quién hizo qué operación y sobre qué entidad. Fire-and-forget. |
+| `EntitySnapshot` | `entity_snapshot` | Foto completa del estado de una entidad en cada mutación. Permite reconstrucción histórica. |
+
+### AuditService
+
+Expone dos métodos con semánticas distintas:
+
+**`log()` — fire-and-forget** (usar para eventos operacionales)
 
 ```ts
-this.auditService.log({ action: PROCEDURE_AUDIT_ACTIONS.STATUS_CHANGED, userId, details });
+this.auditService.log({
+  action: PROCEDURE_AUDIT_ACTIONS.STATUS_CHANGED,
+  userId,
+  entityType: 'PROCEDURE',   // filtra por entidad en audit_log
+  entityId: procedure.id,
+  details: { fromStatus, toStatus },
+});
 ```
 
-- No bloqueante: el `await` está dentro de `.catch()`, no en el caller.
-- Si falla la escritura en BD, el error se logea en consola pero **no propaga** y la operación principal ya habrá respondido.
-- Usar para eventos operacionales: creación de trámites, cambios de estado, asignaciones, etc.
+- No bloqueante. Si falla la escritura, el error se logea en consola pero **no propaga**.
+- `entityType` y `entityId` son opcionales pero deben pasarse siempre para habilitar la consulta `WHERE entity_type = 'X' AND entity_id = '...'`.
 
-### `logCritical()` — awaited
+**`logCritical()` — awaited** (usar para eventos de seguridad)
 
 ```ts
 await this.auditService.logCritical({ action: AUTH_AUDIT_ACTIONS.LOGIN, userId, details });
 ```
 
-- Bloqueante: si falla, el error **sí propaga** al caller (puede romper la respuesta HTTP).
-- Usar para eventos de seguridad donde perder el log sería inaceptable: login, logout, cambio de contraseña.
+- Bloqueante. Si falla, el error **sí propaga** al caller.
+- Usar cuando perder el log sería inaceptable: login, logout, cambio de contraseña.
 
-Ambos métodos persisten en la tabla `audit_log` con `action` (string constante de `src/common/constants/`), `userId` nullable y `details` JSONB.
+### SnapshotService
+
+```ts
+this.snapshot.save({
+  entityType: 'PROCEDURE',
+  entityId: id,
+  action: PROCEDURE_AUDIT_ACTIONS.UPDATED,
+  changedById: userId,
+  snapshotData: { before: { ... }, after: { ... } },  // o solo { ...estado }
+});
+```
+
+- Fire-and-forget. Nunca bloquea el request principal.
+- `snapshotData` contiene **solo campos escalares** de la entidad (sin relaciones).
+- Para `UPDATED`, `STATUS_CHANGED`, `RESOLVED`, `REOPENED`: `{ before, after }` — permite ver exactamente qué cambió.
+- Para `CREATED`, `DELETED`, `ASSIGNED`: estado completo en el momento del evento.
+
+### Qué cubre cada operación
+
+| Operación | AuditLog | EntitySnapshot |
+|---|---|---|
+| Crear trámite | `PROCEDURE_CREATED` | Estado inicial completo |
+| Editar trámite | `PROCEDURE_UPDATED` | `{ before, after }` de campos escalares |
+| Cambio de estado | `PROCEDURE_STATUS_CHANGED` | `{ before, after }` de campos escalares |
+| Asignar inspector | `PROCEDURE_INSPECTOR_ASSIGNED` | `{ previousInspectorUserId, newInspectorUserId }` |
+| Eliminar trámite (soft) | `PROCEDURE_DELETED` | Estado final antes de soft delete |
+| Crear observación | `OBSERVATION_CREATED` | Estado inicial completo |
+| Editar observación | `OBSERVATION_UPDATED` | `{ before, after }` |
+| Resolver observación | `OBSERVATION_RESOLVED` | `{ before, after }` |
+| Reabrir observación | `OBSERVATION_REOPENED` | `{ before, after }` |
+| Eliminar observación (soft) | `OBSERVATION_DELETED` | Estado final antes de soft delete |
+
+### Consultas típicas
+
+```sql
+-- Todo lo que le pasó a un trámite
+SELECT * FROM audit_log
+WHERE entity_type = 'PROCEDURE' AND entity_id = '<uuid>'
+ORDER BY created_at;
+
+-- Estado de un trámite en una fecha específica
+SELECT snapshot_data FROM entity_snapshot
+WHERE entity_type = 'PROCEDURE' AND entity_id = '<uuid>'
+  AND changed_at <= '<fecha>'
+ORDER BY changed_at DESC LIMIT 1;
+
+-- Comparar antes/después de una edición
+SELECT snapshot_data->'before', snapshot_data->'after'
+FROM entity_snapshot
+WHERE entity_type = 'PROCEDURE' AND entity_id = '<uuid>'
+  AND action = 'PROCEDURE_UPDATED';
+```
 
 ---
 

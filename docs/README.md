@@ -23,7 +23,7 @@
 
 | Archivo | Cuándo leerlo |
 |---|---|
-| [architecture/overview.md](architecture/overview.md) | Para entender módulos NestJS, el patrón controller→service→Prisma (sin repo layer), audit logging, CorrelationId, ValidationPipe y env vars. |
+| [architecture/overview.md](architecture/overview.md) | Módulos NestJS, patrón controller→service→Prisma (sin repo layer), sistema de trazabilidad (AuditLog + EntitySnapshot), CorrelationId, ValidationPipe y env vars. |
 | [architecture/auth.md](architecture/auth.md) | Pipeline completo de autenticación: JWT, refresh tokens, rotación, guards, rate limiting, scheduler de purga. |
 | [architecture/roles.md](architecture/roles.md) | Matriz de permisos por rol y módulo. Implementación de `JwtAuthGuard` + `RolesGuard`. |
 | [architecture/scheduler.md](architecture/scheduler.md) | Para entender el job nocturno (00:05) que persiste `daysElapsed` e `isOverdue` en BD. |
@@ -68,5 +68,7 @@
 | Entender por qué un trámite aparece vencido en la BD pero no en la respuesta | [domain/deadlines.md](domain/deadlines.md) sección "buildResponse vs scheduler" |
 | Agregar un feriado | `POST /config/non-working-days` — el caché se invalida solo |
 | Entender una transición que devuelve 422 | [domain/workflow.md](domain/workflow.md) sección "Reglas especiales" |
+| Ver el historial completo de un trámite u observación | [architecture/overview.md](architecture/overview.md) sección "Trazabilidad" — tablas `audit_log` y `entity_snapshot` |
+| Reconstruir el estado de un trámite en una fecha pasada | [architecture/overview.md](architecture/overview.md) sección "Trazabilidad" — consulta de snapshot por fecha |
 | Saber qué rol puede hacer X acción | [architecture/roles.md](architecture/roles.md) |
 | Entender por qué el token sigue válido tras cambiar el rol | [architecture/auth.md](architecture/auth.md) sección "Pipeline" |
