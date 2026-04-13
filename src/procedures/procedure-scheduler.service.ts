@@ -1,8 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { ProcedureStatus, ProcedureTypeCode, CompanyStatus } from '@prisma/client';
 import { PrismaService } from '../db/prisma.service';
 import { ConfigCacheService } from '../configuration/config-cache.service';
+import {
+  RAI_PROYECTO_FIXED_DAYS,
+  MAI_PMA_PROYECTO_FIRST_DAYS,
+  MAI_PMA_PROYECTO_REINGRESO_DAYS,
+} from '../common/constants/procedure.constants';
 
 /**
  * Runs daily to persist daysElapsed and isOverdue on all active, non-terminal
@@ -30,7 +35,7 @@ export class ProcedureSchedulerService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // All active, non-terminal procedures (clock starts at receptionDate for cycle 1)
+    // All active, non-terminal procedures
     const procedures = await this.prisma.procedure.findMany({
       where: {
         isActive: true,
@@ -45,8 +50,8 @@ export class ProcedureSchedulerService {
         companyStatus: true,
         receptionDate: true,
         reviewStartDate: true,
-        obsPickedDate: true,
         deadlineDate: true,
+        subsanacionDeadlineDate: true,
         procedureType: { select: { code: true } },
       },
     });
@@ -54,9 +59,9 @@ export class ProcedureSchedulerService {
     let updated = 0;
 
     for (const p of procedures) {
-      // Mirror the same logic as buildResponse: determine clockStartDate + deadlineDays
-      // so that deadlineDate is recomputed from the current holiday cache (holidays added
-      // after procedure creation are reflected in DB after the nightly run).
+      // ── Plazo del personal (deadlineDate) ─────────────────────────────────
+      // Mirrors buildResponse logic: recompute from holiday cache so that holidays
+      // added after procedure creation are automatically reflected in DB.
       let clockStartDate: Date | null = null;
       let deadlineDays: number | null = null;
 
@@ -66,23 +71,26 @@ export class ProcedureSchedulerService {
         p.cycleCount <= 1
       ) {
         clockStartDate = p.receptionDate;
-        // RAI en estado PROYECTO usa 10 días en primera revisión (cycleKey 1)
-        const cycleKey =
-          p.procedureType.code === ProcedureTypeCode.RAI &&
-          p.companyStatus === CompanyStatus.PROYECTO
-            ? 1
-            : 0;
-        deadlineDays = this.cache.getDeadlineDays(p.procedureType.code, cycleKey) ?? null;
+        // Reglas de dominio fijas para primer ciclo
+        if (p.procedureType.code === ProcedureTypeCode.RAI && p.companyStatus === CompanyStatus.PROYECTO) {
+          deadlineDays = RAI_PROYECTO_FIXED_DAYS;
+        } else if (p.procedureType.code === ProcedureTypeCode.MAI_PMA && p.companyStatus === CompanyStatus.PROYECTO) {
+          deadlineDays = MAI_PMA_PROYECTO_FIRST_DAYS;
+        } else {
+          deadlineDays = this.cache.getDeadlineDays(p.procedureType.code, 0) ?? null;
+        }
       } else if (p.currentStatus === ProcedureStatus.EN_REVISION && p.reviewStartDate) {
         clockStartDate = p.reviewStartDate;
-        deadlineDays = this.cache.getDeadlineDays(p.procedureType.code, 1) ?? null;
-      } else if (
-        p.currentStatus === ProcedureStatus.SUBSANACION_PENDIENTE_REINGRESO &&
-        p.obsPickedDate
-      ) {
-        clockStartDate = p.obsPickedDate;
-        deadlineDays = this.cache.getDeadlineDays(p.procedureType.code, 1) ?? null;
+        // Reglas de dominio fijas para reingresos
+        if (p.procedureType.code === ProcedureTypeCode.RAI && p.companyStatus === CompanyStatus.PROYECTO) {
+          deadlineDays = RAI_PROYECTO_FIXED_DAYS;
+        } else if (p.procedureType.code === ProcedureTypeCode.MAI_PMA && p.companyStatus === CompanyStatus.PROYECTO) {
+          deadlineDays = MAI_PMA_PROYECTO_REINGRESO_DAYS;
+        } else {
+          deadlineDays = this.cache.getDeadlineDays(p.procedureType.code, 1) ?? null;
+        }
       }
+      // SUBSANACION: el reloj del personal está pausado; no se recalcula deadlineDate.
 
       let daysElapsed = 0;
       let dynamicDeadline: Date | null = p.deadlineDate;
@@ -94,7 +102,14 @@ export class ProcedureSchedulerService {
         }
       }
 
-      const isOverdue = dynamicDeadline != null && today > dynamicDeadline;
+      // ── isOverdue del personal ─────────────────────────────────────────────
+      // Para SUBSANACION el isOverdue del personal no aplica (reloj pausado).
+      // Se usa subsanacionDeadlineDate para detectar subsanaciones vencidas en alertas.
+      const hasActiveClock =
+        p.currentStatus === ProcedureStatus.RECIBIDO ||
+        p.currentStatus === ProcedureStatus.EN_REVISION;
+
+      const isOverdue = hasActiveClock && dynamicDeadline != null && today > dynamicDeadline;
 
       await this.prisma.procedure.update({
         where: { id: p.id },
