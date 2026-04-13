@@ -2,6 +2,15 @@ import { ProcedureStatus, ProcedureTypeCode } from '@prisma/client';
 import { UserRole } from './role.constants';
 
 // ---------------------------------------------------------------------------
+// Reglas de dominio fijas para plazos del personal (no configurables)
+// ---------------------------------------------------------------------------
+// RAI en estado PROYECTO: siempre 5 días hábiles en todos los ciclos.
+export const RAI_PROYECTO_FIXED_DAYS = 5;
+// MAI-PMA en estado PROYECTO: 15 días en el primer ciclo, 10 en reingresos.
+export const MAI_PMA_PROYECTO_FIRST_DAYS = 15;
+export const MAI_PMA_PROYECTO_REINGRESO_DAYS = 10;
+
+// ---------------------------------------------------------------------------
 // Transition map — only valid next states (ABANDONADO handled separately)
 // ---------------------------------------------------------------------------
 export const TRANSITIONS_MAP: Partial<Record<ProcedureStatus, ProcedureStatus[]>> = {
