@@ -40,6 +40,7 @@ export class DashboardService {
           where: { currentStatus: ProcedureStatus.OBSERVADO_PENDIENTE_RECOJO, isActive: true },
           select: {
             id: true,
+            routeSheetNumber: true,
             currentStatus: true,
             deadlineDate: true,
             isOverdue: true,
@@ -67,6 +68,7 @@ export class DashboardService {
           },
           select: {
             id: true,
+            routeSheetNumber: true,
             currentStatus: true,
             deadlineDate: true,
             isOverdue: true,
@@ -87,6 +89,7 @@ export class DashboardService {
           take: 10,
           select: {
             id: true,
+            routeSheetNumber: true,
             currentStatus: true,
             receptionDate: true,
             procedureType: { select: { code: true } },
@@ -116,21 +119,10 @@ export class DashboardService {
         }),
 
         // Abandoned this month
-        this.prisma.procedure.findMany({
+        this.prisma.procedure.count({
           where: {
             currentStatus: ProcedureStatus.ABANDONADO,
             closedAt: { gte: monthStart, lte: monthEnd },
-          },
-          select: {
-            id: true,
-            closedAt: true,
-            procedureType: { select: { code: true } },
-            caseFile: {
-              select: {
-                code: true,
-                company: { select: { id: true, legalName: true } },
-              },
-            },
           },
         }),
       ]);
@@ -138,9 +130,10 @@ export class DashboardService {
     return {
       role: UserRole.SECRETARIA,
       pendingPickup: pendingPickup.map((p) => ({
-        id: p.id,
+        procedureId: p.id,
+        routeSheetNumber: p.routeSheetNumber ?? null,
         caseFileCode: p.caseFile.code,
-        company: p.caseFile.company,
+        companyName: p.caseFile.company.legalName,
         procedureType: p.procedureType.code,
         obsIssuedAt: p.audits[0]?.changedAt ?? null,
         deadlineDate: p.deadlineDate,
@@ -148,30 +141,26 @@ export class DashboardService {
         isOverdue: p.isOverdue,
       })),
       pendingReentry: pendingReentry.map((p) => ({
-        id: p.id,
+        procedureId: p.id,
+        routeSheetNumber: p.routeSheetNumber ?? null,
         caseFileCode: p.caseFile.code,
-        company: p.caseFile.company,
+        companyName: p.caseFile.company.legalName,
         procedureType: p.procedureType.code,
         deadlineDate: p.deadlineDate,
         daysRemaining: p.deadlineDate ? this.calcDaysRemaining(p.deadlineDate) : null,
         isOverdue: p.isOverdue,
       })),
       recentlyReceived: recentlyReceived.map((p) => ({
-        id: p.id,
+        procedureId: p.id,
+        routeSheetNumber: p.routeSheetNumber ?? null,
         caseFileCode: p.caseFile.code,
-        company: p.caseFile.company,
+        companyName: p.caseFile.company.legalName,
         procedureType: p.procedureType.code,
         currentStatus: p.currentStatus,
         receptionDate: p.receptionDate,
       })),
       overdueCount,
-      abandonedThisMonth: abandonedThisMonth.map((p) => ({
-        id: p.id,
-        caseFileCode: p.caseFile.code,
-        company: p.caseFile.company,
-        procedureType: p.procedureType.code,
-        closedAt: p.closedAt,
-      })),
+      abandonedThisMonth: abandonedThisMonth,
     };
   }
 
@@ -185,6 +174,7 @@ export class DashboardService {
 
     const procedureSelect = {
       id: true,
+      routeSheetNumber: true,
       currentStatus: true,
       deadlineDate: true,
       isOverdue: true,
@@ -209,13 +199,12 @@ export class DashboardService {
         orderBy: { receptionDate: 'asc' },
         select: procedureSelect,
       }),
-      this.prisma.procedure.findMany({
+      this.prisma.procedure.count({
         where: {
           assignedInspectorUserId: userId,
           currentStatus: ProcedureStatus.CERRADO,
           closedAt: { gte: monthStart, lte: monthEnd },
         },
-        select: procedureSelect,
       }),
       this.prisma.observation.count({
         where: {
@@ -227,9 +216,10 @@ export class DashboardService {
     ]);
 
     const mapProcedure = (p: any) => ({
-      id: p.id,
+      procedureId: p.id,
+      routeSheetNumber: p.routeSheetNumber ?? null,
       caseFileCode: p.caseFile.code,
-      company: p.caseFile.company,
+      companyName: p.caseFile.company.legalName,
       procedureType: p.procedureType.code,
       currentStatus: p.currentStatus,
       deadlineDate: p.deadlineDate,
@@ -243,7 +233,7 @@ export class DashboardService {
       myQueue: myQueue.map(mapProcedure),
       myOverdue: myQueue.filter((p) => p.isOverdue).map(mapProcedure),
       unassigned: unassigned.map(mapProcedure),
-      closedThisMonth: closedThisMonth.map(mapProcedure),
+      closedThisMonth: closedThisMonth,
       pendingObsCount,
     };
   }
@@ -262,7 +252,6 @@ export class DashboardService {
       typeGroups,
       overdueList,
       raiExpiring,
-      inspectorWorkloadRaw,
       activityReceived,
       activityClosed,
       activityAbandoned,
@@ -291,6 +280,7 @@ export class DashboardService {
           daysElapsed: true,
           procedureType: { select: { code: true } },
           assignedInspector: { select: { id: true, firstName: true, lastName: true } },
+          routeSheetNumber: true,
           caseFile: {
             select: {
               code: true,
@@ -317,20 +307,6 @@ export class DashboardService {
               code: true,
               company: { select: { id: true, legalName: true, raiNumber: true } },
             },
-          },
-        },
-      }),
-
-      // Inspector workload
-      this.prisma.user.findMany({
-        where: { isActive: true, roles: { some: { role: { name: 'INSPECTOR' as any } } } },
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          assignedProcedures: {
-            where: { isActive: true, currentStatus: { not: ProcedureStatus.CERRADO } },
-            select: { id: true, isOverdue: true },
           },
         },
       }),
@@ -368,20 +344,22 @@ export class DashboardService {
 
     // RAI expiration semaphore
     const today = new Date();
-    const ninetyDaysLater = new Date(today);
-    ninetyDaysLater.setDate(today.getDate() + 90);
+    const fortyFiveDaysLater = new Date(today);
+    fortyFiveDaysLater.setDate(today.getDate() + 45);
 
     const raiExpirationAlerts = raiExpiring.map((p) => {
       const exp = p.expirationDate!;
-      const semaforo = exp < today ? 'VENCIDO' : exp <= ninetyDaysLater ? 'POR_VENCER' : 'VIGENTE';
+      const semaforo = exp < today ? 'VENCIDO' : exp <= fortyFiveDaysLater ? 'POR_VENCER' : 'VIGENTE';
+      const daysUntilExpiration = Math.ceil((exp.getTime() - today.getTime()) / 86400000);
       return {
-        procedureId: p.id,
-        caseFileCode: p.caseFile.code,
-        company: p.caseFile.company,
+        companyId: p.caseFile.company.id,
+        companyName: p.caseFile.company.legalName,
+        raiNumber: p.caseFile.company.raiNumber,
         expirationDate: exp,
-        semaforo,
+        daysUntilExpiration,
+        status: semaforo as 'POR_VENCER' | 'VENCIDO' | 'VIGENTE',
       };
-    }).filter((p) => p.semaforo !== 'VIGENTE');
+    }).filter((p) => p.status !== 'VIGENTE');
 
     // IAA delinquent — only after May 31
     let iaaDelinquent: any[] = [];
@@ -406,15 +384,14 @@ export class DashboardService {
         select: { id: true, legalName: true, raiNumber: true },
       });
 
-      iaaDelinquent = cat3Companies.filter((c) => !companyIdsWithIaa.has(c.id));
+      iaaDelinquent = cat3Companies
+        .filter((c) => !companyIdsWithIaa.has(c.id))
+        .map((c) => ({
+          companyId: c.id,
+          companyName: c.legalName,
+          lastIaaDate: null,
+        }));
     }
-
-    // Inspector workload
-    const inspectorWorkload = inspectorWorkloadRaw.map((u) => ({
-      inspector: { id: u.id, fullName: `${u.firstName} ${u.lastName}`.trim() },
-      activeCount: u.assignedProcedures.length,
-      overdueCount: u.assignedProcedures.filter((p) => p.isOverdue).length,
-    }));
 
     // Avg days to close this month
     const closedThisMonthProcs = await this.prisma.procedure.findMany({
@@ -439,12 +416,15 @@ export class DashboardService {
       typeSummary,
       overdueList: overdueList.map((p) => ({
         procedureId: p.id,
+        routeSheetNumber: p.routeSheetNumber ?? null,
         caseFileCode: p.caseFile.code,
-        company: p.caseFile.company,
+        companyName: p.caseFile.company.legalName,
         procedureType: p.procedureType.code,
         currentStatus: p.currentStatus,
         deadlineDate: p.deadlineDate,
-        daysOverdue: p.daysElapsed,
+        daysOverdue: p.deadlineDate 
+          ? Math.max(0, Math.ceil((today.getTime() - new Date(p.deadlineDate).getTime()) / 86400000))
+          : 0,
         assignedInspector: p.assignedInspector
           ? {
               id: p.assignedInspector.id,
@@ -454,7 +434,6 @@ export class DashboardService {
       })),
       raiExpirationAlerts,
       iaaDelinquent,
-      inspectorWorkload,
       activityThisMonth: {
         received: activityReceived,
         closed: activityClosed,

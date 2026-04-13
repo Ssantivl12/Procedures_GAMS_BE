@@ -1,6 +1,7 @@
 import { Injectable, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../db/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { CasesService } from '../cases/cases.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { QueryCompaniesDto } from './dto/query-companies.dto';
@@ -12,6 +13,7 @@ export class CompaniesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
+    private readonly casesService: CasesService,
   ) {}
 
   async create(dto: CreateCompanyDto, userId: string): Promise<Company> {
@@ -302,18 +304,7 @@ export class CompaniesService {
   }
 
   async getCaseFile(companyId: string) {
-    return this.prisma.caseFile.findUnique({
-      where: { companyId },
-      include: {
-        company: {
-          select: {
-            id: true,
-            legalName: true,
-            raiNumber: true,
-            category: true,
-          },
-        },
-      },
-    });
+    // Reutilizamos la lógica de CasesService que ya incluye el proceduresSummary y el semáforo RAI
+    return this.casesService.findByCompanyId(companyId);
   }
 }
