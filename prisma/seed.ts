@@ -85,7 +85,7 @@ async function main() {
 
   // ── 4. DeadlineConfig ─────────────────────────────────────────────────────
   const deadlineConfigs = [
-    { procedureType: ProcedureTypeCode.RAI,     cycleNumber: 0, deadlineDays: 5,  description: 'Revisión inicial' },
+    { procedureType: ProcedureTypeCode.RAI,     cycleNumber: 0, deadlineDays: 10, description: 'Revisión inicial' },
     { procedureType: ProcedureTypeCode.RAI,     cycleNumber: 1, deadlineDays: 10, description: 'Revisión de subsanación' },
     { procedureType: ProcedureTypeCode.MAI_PMA, cycleNumber: 0, deadlineDays: 15, description: 'Revisión inicial' },
     { procedureType: ProcedureTypeCode.MAI_PMA, cycleNumber: 1, deadlineDays: 15, description: 'Revisión de subsanación' },
