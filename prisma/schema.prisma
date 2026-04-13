@@ -262,9 +262,10 @@ model Procedure {
   reviewStartDate DateTime? @db.Date
   obsPickedDate   DateTime? @db.Date
 
-  deadlineDate        DateTime? @db.Date
-  daysElapsed         Int?      @default(0)
-  isOverdue           Boolean   @default(false)
+  deadlineDate            DateTime? @db.Date
+  subsanacionDeadlineDate DateTime? @db.Date
+  daysElapsed             Int?      @default(0)
+  isOverdue               Boolean   @default(false)
   routeSheetNumber    String?
   approvalDate        DateTime? @db.Date
   approvalCertificate String?
@@ -299,6 +300,7 @@ model Procedure {
   @@index([currentStatus, assignedInspectorUserId])
   @@index([receptionDate])
   @@index([deadlineDate])
+  @@index([subsanacionDeadlineDate])
   @@map("procedure")
 }
 
