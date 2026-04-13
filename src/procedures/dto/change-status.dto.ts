@@ -4,6 +4,8 @@ import {
   IsString,
   IsNotEmpty,
   IsDateString,
+  IsInt,
+  Min,
   ValidateIf,
 } from 'class-validator';
 import { ProcedureStatus } from '@prisma/client';
@@ -27,6 +29,14 @@ export class ChangeStatusDto {
   @IsNotEmpty()
   @IsDateString()
   obsPickedDate?: string;
+
+  // Required when toStatus = SUBSANACION_PENDIENTE_REINGRESO
+  // Días hábiles que tiene la empresa para subsanar (ingresado por el personal al registrar el recojo)
+  @ValidateIf((o) => o.toStatus === ProcedureStatus.SUBSANACION_PENDIENTE_REINGRESO)
+  @IsNotEmpty()
+  @IsInt()
+  @Min(1)
+  subsanacionDays?: number;
 
   // Optional metadata when toStatus = EN_REVISION (no longer drives deadline calculation)
   @IsOptional()
