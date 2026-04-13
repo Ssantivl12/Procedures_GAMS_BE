@@ -26,6 +26,9 @@ import {
   ABANDON_ROLES,
   REACTIVATE_ROLES,
   ACTIVE_PROCEDURE_STATUSES_SET,
+  RAI_PROYECTO_FIXED_DAYS,
+  MAI_PMA_PROYECTO_FIRST_DAYS,
+  MAI_PMA_PROYECTO_REINGRESO_DAYS,
 } from '../common/constants/procedure.constants';
 
 @Injectable()
@@ -98,17 +101,23 @@ export class ProceduresService {
     let deadlineDate: Date | null = procedure.deadlineDate ?? null;
     let isOverdue = false;
 
+    // Plazo de subsanación de la empresa (ingresado por el personal, no recalculado)
+    let subsanacionDeadlineDate: Date | null = procedure.subsanacionDeadlineDate ?? null;
+    let subsanacionDaysRemaining: number | null = null;
+    let isSubsanacionOverdue = false;
+
     if (!isTerminal) {
       const today = new Date();
       today.setUTCHours(0, 0, 0, 0); // normalizar a medianoche UTC para comparaciones exactas
       const status = procedure.currentStatus as ProcedureStatus;
       const typeCode = procedure.procedureType?.code as ProcedureTypeCode | undefined;
+      const companyStatus = procedure.companyStatus as CompanyStatus | null | undefined;
 
-      // Determine the start date and configured deadline days for the active phase.
+      // Determine the start date and configured deadline days for the active staff review phase.
       //
       // RECIBIDO / EN_REVISION ciclo 1 → reloj desde receptionDate
       // EN_REVISION reingreso (cycleCount > 1) → reloj desde reviewStartDate (= reentryDate)
-      // SUBSANACION → reloj desde obsPickedDate
+      // SUBSANACION → reloj del personal pausado; la empresa tiene su propio plazo (subsanacionDeadlineDate)
       // OBSERVADO → reloj pausado (clockStartDate = null)
       let clockStartDate: Date | null = null;
       let deadlineDays: number | null = null;
@@ -118,22 +127,10 @@ export class ProceduresService {
         procedure.cycleCount <= 1
       ) {
         clockStartDate = new Date(procedure.receptionDate);
-        // RAI en estado PROYECTO usa 10 días en primera revisión (cycleKey 1)
-        const cycleKey =
-          typeCode === ProcedureTypeCode.RAI &&
-          procedure.companyStatus === CompanyStatus.PROYECTO
-            ? 1
-            : 0;
-        deadlineDays = typeCode ? (this.getDeadlineDays(typeCode, cycleKey) ?? null) : null;
+        deadlineDays = typeCode ? (this.getDeadlineDays(typeCode, 0, companyStatus) ?? null) : null;
       } else if (status === ProcedureStatus.EN_REVISION && procedure.reviewStartDate) {
         clockStartDate = new Date(procedure.reviewStartDate);
-        deadlineDays = typeCode ? (this.getDeadlineDays(typeCode, 1) ?? null) : null;
-      } else if (
-        status === ProcedureStatus.SUBSANACION_PENDIENTE_REINGRESO &&
-        procedure.obsPickedDate
-      ) {
-        clockStartDate = new Date(procedure.obsPickedDate);
-        deadlineDays = typeCode ? (this.getDeadlineDays(typeCode, 1) ?? null) : null;
+        deadlineDays = typeCode ? (this.getDeadlineDays(typeCode, 1, companyStatus) ?? null) : null;
       }
 
       // Recompute deadlineDate dynamically so that holidays registered after procedure
@@ -143,16 +140,15 @@ export class ProceduresService {
         deadlineDate = this.cache.addWorkingDays(clockStartDate, deadlineDays);
       }
 
-      // daysElapsed: días hábiles transcurridos desde el inicio del plazo activo.
+      // daysElapsed: días hábiles transcurridos desde el inicio del plazo del personal activo.
       if (clockStartDate !== null) {
         daysElapsed = this.cache.countWorkingDays(clockStartDate, today);
       }
 
-      // daysRemaining: días hábiles restantes (negativo = vencido hace N días hábiles).
+      // daysRemaining: días hábiles restantes para el personal (negativo = vencido).
       const hasActiveClock =
         status === ProcedureStatus.RECIBIDO ||
-        status === ProcedureStatus.EN_REVISION ||
-        status === ProcedureStatus.SUBSANACION_PENDIENTE_REINGRESO;
+        status === ProcedureStatus.EN_REVISION;
 
       if (hasActiveClock && deadlineDate) {
         if (today <= deadlineDate) {
@@ -162,6 +158,16 @@ export class ProceduresService {
         }
         isOverdue = today > deadlineDate;
       }
+
+      // Métricas del plazo de subsanación de la empresa (activo solo en estado SUBSANACION)
+      if (status === ProcedureStatus.SUBSANACION_PENDIENTE_REINGRESO && subsanacionDeadlineDate) {
+        if (today <= subsanacionDeadlineDate) {
+          subsanacionDaysRemaining = this.cache.countWorkingDays(today, subsanacionDeadlineDate);
+        } else {
+          subsanacionDaysRemaining = -this.cache.countWorkingDays(subsanacionDeadlineDate, today);
+        }
+        isSubsanacionOverdue = today > subsanacionDeadlineDate;
+      }
     }
 
     return {
@@ -170,6 +176,9 @@ export class ProceduresService {
       daysElapsed,
       daysRemaining,
       isOverdue,
+      subsanacionDeadlineDate,
+      subsanacionDaysRemaining,
+      isSubsanacionOverdue,
       raiStatus: this.computeRaiStatus(procedure),
     };
   }
@@ -188,16 +197,25 @@ export class ProceduresService {
   }
 
   /**
-   * Looks up the deadline in days for a given procedure type and cycle count.
-   * cycleCount is the value BEFORE incrementing (matches DeadlineConfig.cycleNumber:
-   *   0 = first review, 1 = all reentries).
-   * Uses the in-memory cache from ConfigCacheService.
+   * Resolves the staff review deadline (días hábiles del personal) for a given
+   * procedure type, cycle count, and company status.
+   *
+   * Reglas de dominio fijas (no configurables):
+   *   - RAI + PROYECTO: siempre RAI_PROYECTO_FIXED_DAYS, independiente del ciclo.
+   *   - MAI-PMA + PROYECTO: MAI_PMA_PROYECTO_FIRST_DAYS en ciclo 0, MAI_PMA_PROYECTO_REINGRESO_DAYS en reingresos.
+   * Para todos los demás casos usa DeadlineConfig (cycleNumber 0 = primer ciclo, 1 = reingreso).
    */
   private getDeadlineDays(
     typeCode: ProcedureTypeCode,
     cycleCount: number,
+    companyStatus?: CompanyStatus | null,
   ): number | null {
-    // cache.getDeadlineDays maps: 0 → configKey 0, any >0 → configKey 1
+    if (typeCode === ProcedureTypeCode.RAI && companyStatus === CompanyStatus.PROYECTO) {
+      return RAI_PROYECTO_FIXED_DAYS;
+    }
+    if (typeCode === ProcedureTypeCode.MAI_PMA && companyStatus === CompanyStatus.PROYECTO) {
+      return cycleCount === 0 ? MAI_PMA_PROYECTO_FIRST_DAYS : MAI_PMA_PROYECTO_REINGRESO_DAYS;
+    }
     return this.cache.getDeadlineDays(typeCode, cycleCount) ?? null;
   }
 
@@ -300,15 +318,9 @@ export class ProceduresService {
       }
     }
 
-    // 7. Calculate initial deadline from receptionDate (clock starts at RECIBIDO).
-    // RAI en estado PROYECTO usa el plazo de reingreso (10 días) en la primera revisión
-    // en lugar del plazo estándar de primera revisión (5 días).
-    const initialCycleKey =
-      procedureType.code === ProcedureTypeCode.RAI &&
-      dto.companyStatus === CompanyStatus.PROYECTO
-        ? 1
-        : 0;
-    const initialDeadlineDays = this.getDeadlineDays(procedureType.code, initialCycleKey);
+    // 7. Calculate initial staff review deadline from receptionDate (clock starts at RECIBIDO).
+    // cycleCount=0 = primer ciclo; companyStatus es pasado para que se apliquen las reglas de dominio fijas.
+    const initialDeadlineDays = this.getDeadlineDays(procedureType.code, 0, dto.companyStatus);
     const initialDeadlineDate =
       initialDeadlineDays !== null
         ? this.cache.addWorkingDays(new Date(dto.receptionDate), initialDeadlineDays)
@@ -630,13 +642,11 @@ export class ProceduresService {
       updateData.obsPickedDate = new Date(dto.obsPickedDate);
     }
     if (toStatus === ProcedureStatus.SUBSANACION_PENDIENTE_REINGRESO) {
-      // obsPickedDate is validated above as required for this transition
+      // obsPickedDate y subsanacionDays son validados en el DTO como requeridos para esta transición.
+      // El plazo de subsanación lo ingresa el personal; no viene de DeadlineConfig.
       const pickDate = new Date(dto.obsPickedDate!);
-      // Use DeadlineConfig for cycle 1 (re-entry) as the subsanation deadline
-      const subsanDays = this.getDeadlineDays(procedure.procedureType.code, 1);
-      if (subsanDays !== null) {
-        updateData.deadlineDate = this.cache.addWorkingDays(pickDate, subsanDays);
-      }
+      updateData.subsanacionDeadlineDate = this.cache.addWorkingDays(pickDate, dto.subsanacionDays!);
+      // deadlineDate no se modifica: conserva el último plazo de revisión del personal.
       updateData.isOverdue = false;
     }
     if (dto.reviewStartDate) {
@@ -909,10 +919,12 @@ export class ProceduresService {
     // reviewStartDate defaults to reentryDate if not provided
     const reviewStart = dto.reviewStartDate ? new Date(dto.reviewStartDate) : reentryDate;
 
-    // Calculate reviewDeadline using DeadlineConfig
+    // Calculate staff review deadline for the new cycle.
+    // procedure.cycleCount is before increment; companyStatus para aplicar reglas de dominio fijas.
     const deadlineDays = this.getDeadlineDays(
       procedure.procedureType.code,
       procedure.cycleCount, // before increment
+      procedure.companyStatus,
     );
     let reviewDeadline: Date | null = null;
     if (deadlineDays !== null) {
@@ -934,6 +946,8 @@ export class ProceduresService {
         cycleCount: { increment: 1 },
         reentryCount: { increment: 1 },
         isOverdue: false,
+        // La empresa reingresó: el plazo de subsanación ya no está activo.
+        subsanacionDeadlineDate: null,
       };
 
       if (reviewDeadline !== null) {
